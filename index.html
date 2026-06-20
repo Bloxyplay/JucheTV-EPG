@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)">
+  <title>KCTV EPG — Korean Central Television Guide</title>
+  <style>
+    :root {
+      --bg: #F2F2F7;
+      --elevated: #FFFFFF;
+      --primary: #1C1C1E;
+      --secondary: #8E8E93;
+      --tertiary: #C7C7CC;
+      --separator: rgba(60, 60, 67, 0.1);
+      --separator-dark: rgba(140, 140, 147, 0.24);
+      --tint: #007AFF;
+      --tint-secondary: #5856D6;
+      --red: #FF3B30;
+      --green: #34C759;
+      --orange: #FF9500;
+      --blue: #007AFF;
+      --indigo: #5856D6;
+      --purple: #AF52DE;
+      --teal: #30B0C7;
+      --radius-sm: 10px;
+      --radius-md: 14px;
+      --radius-lg: 18px;
+      --radius-xl: 24px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow-md: 0 4px 16px rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.04);
+      --shadow-lg: 0 12px 40px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+    }
+
+    :root.dark {
+      --bg: #000000;
+      --elevated: #1C1C1E;
+      --primary: #F2F2F7;
+      --secondary: #8E8E93;
+      --tertiary: #48484A;
+      --separator: rgba(140, 140, 147, 0.24);
+      --separator-dark: rgba(140, 140, 147, 0.36);
+      --tint: #0A84FF;
+      --tint-secondary: #5E5CE6;
+      --green: #30D158;
+      --blue: #0A84FF;
+      --orange: #FF9F0A;
+      --purple: #BF5AF2;
+      --teal: #40C8E0;
+    }
+
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--primary);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      transition: background 0.3s ease, color 0.3s ease;
+    }
+
+    /* === NAV === */
+    .nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(242, 242, 247, 0.72);
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-bottom: 0.5px solid var(--separator);
+      transition: background 0.3s, border-color 0.3s;
+    }
+    :root.dark .nav {
+      background: rgba(28, 28, 30, 0.72);
+    }
+    .nav-inner {
+      max-width: 980px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 52px;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 19px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      color: var(--primary);
+      text-decoration: none;
+    }
+    .logo-icon {
+      width: 30px;
+      height: 30px;
+      background: linear-gradient(135deg, #FF2D55, #FF9500);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 14px;
+    }
+    .nav-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .nav-btn {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: none;
+      background: transparent;
+      color: var(--secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover { background: rgba(0,0,0,0.05); color: var(--primary); }
+    :root.dark .nav-btn:hover { background: rgba(255,255,255,0.08); }
+    .nav-btn svg { width: 18px; height: 18px; }
+
+    /* === MAIN === */
+    .main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 32px 20px 60px;
+    }
+
+    /* Hero */
+    .hero {
+      text-align: center;
+      margin-bottom: 36px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 14px;
+      background: rgba(0, 122, 255, 0.1);
+      border: 0.5px solid rgba(0, 122, 255, 0.2);
+      border-radius: 100px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--tint);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 16px;
+    }
+    .hero-badge .dot {
+      width: 6px; height: 6px;
+      background: var(--tint);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.35; }
+    }
+    .hero h1 {
+      font-size: 32px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      line-height: 1.2;
+      margin-bottom: 10px;
+    }
+    .hero h1 .highlight {
+      background: linear-gradient(135deg, var(--tint), var(--tint-secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--secondary);
+      line-height: 1.5;
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    /* Section label */
+    .section-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: var(--secondary);
+      margin-bottom: 12px;
+      padding-left: 6px;
+    }
+
+    /* Notice banner */
+    .notice-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      background: rgba(255, 149, 0, 0.08);
+      border: 0.5px solid rgba(255, 149, 0, 0.2);
+      border-radius: var(--radius-lg);
+      padding: 16px 18px;
+      margin-bottom: 24px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--primary);
+      transition: all 0.3s ease;
+    }
+    :root.dark .notice-banner {
+      background: rgba(255, 159, 10, 0.1);
+      border-color: rgba(255, 159, 10, 0.25);
+    }
+    .notice-banner svg {
+      width: 18px;
+      height: 18px;
+      color: var(--orange);
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .notice-banner strong {
+      color: var(--orange);
+      font-weight: 700;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--elevated);
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--separator);
+      overflow: hidden;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      margin-bottom: 12px;
+    }
+    .card:hover {
+      box-shadow: var(--shadow-lg);
+      border-color: transparent;
+    }
+
+    /* EPG Card Header */
+    .epg-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px;
+      background: linear-gradient(135deg, rgba(0,122,255,0.06), rgba(88,86,214,0.04));
+      border-bottom: 0.5px solid var(--separator);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .epg-header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .epg-logo {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--red), #FF6B35);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 800;
+      font-size: 12px;
+      flex-shrink: 0;
+    }
+    .epg-header-info h3 {
+      font-size: 15px;
+      font-weight: 700;
+      margin-bottom: 1px;
+    }
+    .epg-header-info p {
+      font-size: 12px;
+      color: var(--secondary);
+    }
+    .epg-header-right {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .tz-badge {
+      background: var(--bg);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 0.5px solid var(--separator);
+      color: var(--secondary);
+    }
+    .epg-date {
+      font-size: 12px;
+      color: var(--secondary);
+      font-weight: 500;
+    }
+
+    /* EPG List */
+    .epg-list {
+      max-height: 480px;
+      overflow-y: auto;
+      padding: 6px;
+    }
+    .epg-list::-webkit-scrollbar { width: 5px; }
+    .epg-list::-webkit-scrollbar-track { background: transparent; }
+    .epg-list::-webkit-scrollbar-thumb { background: var(--separator-dark); border-radius: 3px; }
+
+    .epg-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+      cursor: default;
+    }
+    .epg-item:hover { background: rgba(0,0,0,0.03); }
+    :root.dark .epg-item:hover { background: rgba(255,255,255,0.04); }
+    .epg-item.current {
+      background: linear-gradient(135deg, rgba(0,122,255,0.08), rgba(88,86,214,0.04));
+      border: 0.5px solid rgba(0,122,255,0.15);
+    }
+    :root.dark .epg-item.current {
+      background: linear-gradient(135deg, rgba(10,132,255,0.1), rgba(94,92,230,0.06));
+      border-color: rgba(10,132,255,0.2);
+    }
+    .epg-item.past { opacity: 0.4; }
+
+    .epg-time {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      min-width: 52px;
+      flex-shrink: 0;
+    }
+    .epg-time .start { font-size: 13px; font-weight: 700; color: var(--primary); }
+    .epg-time .end { font-size: 11px; color: var(--secondary); margin-top: 1px; }
+    .epg-item.current .epg-time .start { color: var(--tint); }
+
+    .epg-bar {
+      width: 3px;
+      height: 36px;
+      background: var(--separator);
+      border-radius: 2px;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .epg-item.current .epg-bar {
+      background: linear-gradient(180deg, var(--tint), var(--tint-secondary));
+    }
+    .epg-item.past .epg-bar { background: var(--separator); }
+
+    .epg-content { flex: 1; min-width: 0; }
+    .epg-title-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 4px;
+    }
+    .epg-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--primary);
+      line-height: 1.4;
+    }
+    .epg-item.current .epg-title { color: var(--tint); }
+    .epg-now-badge {
+      font-size: 9px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--tint);
+      background: rgba(0,122,255,0.1);
+      padding: 2px 7px;
+      border-radius: 4px;
+      border: 0.5px solid rgba(0,122,255,0.15);
+      flex-shrink: 0;
+    }
+    :root.dark .epg-now-badge {
+      background: rgba(10,132,255,0.15);
+      border-color: rgba(10,132,255,0.25);
+    }
+    .epg-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .epg-category {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--bg);
+      border: 0.5px solid var(--separator);
+      color: var(--secondary);
+    }
+    .epg-type {
+      font-size: 10px;
+      color: var(--tertiary);
+      font-family: 'Noto Sans KR', -apple-system, sans-serif;
+    }
+    .epg-note {
+      font-size: 11px;
+      color: var(--orange);
+      margin-top: 3px;
+    }
+
+    /* Features */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .feature-card {
+      background: var(--elevated);
+      border: 0.5px solid var(--separator);
+      border-radius: var(--radius-lg);
+      padding: 22px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .feature-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-lg);
+      border-color: transparent;
+    }
+    .feature-icon {
+      width: 36px; height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 12px;
+    }
+    .feature-card:nth-child(1) .feature-icon { background: rgba(0,122,255,0.1); }
+    .feature-card:nth-child(2) .feature-icon { background: rgba(52,199,89,0.1); }
+    .feature-card:nth-child(3) .feature-icon { background: rgba(175,82,222,0.1); }
+    .feature-card:nth-child(4) .feature-icon { background: rgba(255,149,0,0.1); }
+    .feature-card h3 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 5px;
+    }
+    .feature-card p {
+      font-size: 12px;
+      color: var(--secondary);
+      line-height: 1.55;
+    }
+
+    /* Integration */
+    .code-block {
+      background: #0d0d14;
+      border: 0.5px solid var(--separator-dark);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 12px;
+    }
+    .code-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: rgba(255,255,255,0.02);
+      border-bottom: 0.5px solid rgba(140,140,147,0.15);
+    }
+    .code-header .lang {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .code-header .copy-btn {
+      background: rgba(255,255,255,0.06);
+      border: 0.5px solid rgba(140,140,147,0.2);
+      color: var(--secondary);
+      padding: 4px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .code-header .copy-btn:hover {
+      border-color: rgba(140,140,147,0.35);
+      color: #fff;
+    }
+    .code-block pre {
+      padding: 16px 18px;
+      overflow-x: auto;
+      font-family: 'SF Mono', 'SFMono-Regular', 'Fira Code', Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.7;
+      color: #a5b3ce;
+    }
+    .code-block code .k { color: #c792ea; }
+    .code-block code .s { color: #c3e88d; }
+    .code-block code .n { color: #f78c6c; }
+    .code-block code .c { color: #676e95; font-style: italic; }
+    .code-block code .f { color: #82aaff; }
+
+    /* CTA Card */
+    .cta-card {
+      background: linear-gradient(135deg, rgba(0,122,255,0.08), rgba(88,86,214,0.06));
+      border: 0.5px solid rgba(0,122,255,0.15);
+      border-radius: var(--radius-lg);
+      padding: 24px 20px;
+      text-align: center;
+      margin-bottom: 32px;
+      transition: all 0.3s ease;
+    }
+    .cta-card:hover {
+      border-color: rgba(0,122,255,0.25);
+      box-shadow: var(--shadow-md);
+    }
+    .cta-card h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .cta-card p {
+      font-size: 13px;
+      color: var(--secondary);
+      margin-bottom: 16px;
+      line-height: 1.5;
+    }
+    .cta-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 24px;
+      background: linear-gradient(135deg, var(--tint), var(--tint-secondary));
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+      border-radius: var(--radius-md);
+      text-decoration: none;
+      border: none;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 16px rgba(0,122,255,0.25);
+    }
+    .cta-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(0,122,255,0.35);
+    }
+    .cta-btn svg { width: 16px; height: 16px; }
+
+    /* Group spacing */
+    .section-group {
+      margin-bottom: 36px;
+    }
+
+    /* Footer */
+    .footer {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 24px 20px 40px;
+      text-align: center;
+      font-size: 12px;
+      color: var(--secondary);
+      border-top: 0.5px solid var(--separator);
+      line-height: 1.8;
+    }
+    .footer .heart {
+      color: var(--red);
+      display: inline-block;
+      animation: heartbeat 1.5s ease-in-out infinite;
+    }
+    @keyframes heartbeat {
+      0%, 100% { transform: scale(1); }
+      14% { transform: scale(1.15); }
+      28% { transform: scale(1); }
+      42% { transform: scale(1.15); }
+      70% { transform: scale(1); }
+    }
+
+    /* Animations */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(16px);
+      animation: fadeInUp 0.6s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    }
+    @keyframes fadeInUp {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .stagger-1 { animation-delay: 0.05s; }
+    .stagger-2 { animation-delay: 0.1s; }
+    .stagger-3 { animation-delay: 0.15s; }
+    .stagger-4 { animation-delay: 0.2s; }
+    .stagger-5 { animation-delay: 0.25s; }
+
+    @media (max-width: 640px) {
+      .nav-inner { padding: 0 16px; height: 48px; }
+      .main { padding: 24px 16px 40px; }
+      .hero h1 { font-size: 28px; }
+      .hero { margin-bottom: 28px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .epg-header { padding: 14px 16px; }
+      .epg-item { padding: 10px 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <div class="nav-inner">
+      <a href="index.html" class="logo">
+        <div class="logo-icon">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+        Juche TV
+      </a>
+      <div class="nav-right">
+        <button class="nav-btn" id="themeToggle" title="Toggle theme">
+          <svg id="moon" viewBox="0 0 24 24" fill="currentColor"><path d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z"/></svg>
+          <svg id="sun" viewBox="0 0 24 24" fill="currentColor" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main">
+    <div class="hero">
+      <div class="hero-badge fade-in">
+        <span class="dot"></span>
+        Free JSON API
+      </div>
+      <h1 class="fade-in" style="animation-delay:0.05s">
+        KCTV <span class="highlight">EPG Guide</span>
+      </h1>
+      <p class="fade-in" style="animation-delay:0.1s">
+        A real-time Electronic Program Guide for Korean Central Television streams.
+        Drop it into your site and give your viewers instant schedule visibility.
+      </p>
+    </div>
+
+    <!-- Notice Banner -->
+    <div class="notice-banner fade-in stagger-1">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <div>
+        <strong>Schedule Notice:</strong> The EPG is sourced from KCTV broadcasts and updated daily.
+        On some days, the schedule may be delayed or slightly off due to broadcast timing changes,
+        satellite relay delays, manual update gaps, or the creator being busy with homework and assignments — though this is rare.
+        Always cross-check with the live stream if needed.
+      </div>
+    </div>
+
+    <!-- Live Preview -->
+    <div class="section-group">
+      <div class="section-label fade-in stagger-2">Live Preview</div>
+      <div class="card fade-in stagger-2">
+        <div class="epg-header">
+          <div class="epg-header-left">
+            <div class="epg-logo">KCTV</div>
+            <div class="epg-header-info">
+              <h3>조선중앙텔레비죤</h3>
+              <p>Korean Central Television</p>
+            </div>
+          </div>
+          <div class="epg-header-right">
+            <span class="tz-badge">Asia/Pyongyang</span>
+            <span class="epg-date" id="epgDate">Loading...</span>
+          </div>
+        </div>
+        <div class="epg-list" id="epgList">
+          <div style="padding:40px;text-align:center;color:var(--secondary);font-size:13px;">
+            Loading schedule...
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Why Use It -->
+    <div class="section-group">
+      <div class="section-label fade-in stagger-3">Why Use It</div>
+      <div class="features-grid fade-in stagger-3">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+            </svg>
+          </div>
+          <h3>Instant Integration</h3>
+          <p>One JSON endpoint. No auth, no keys, no rate limits. Fetch with a single <code>fetch()</code> call.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
+            </svg>
+          </div>
+          <h3>Daily Refreshed</h3>
+          <p>The schedule updates every day with tomorrow's broadcast lineup, sourced from KCTV programming.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="2" y1="12" x2="22" y2="12"/>
+              <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+            </svg>
+          </div>
+          <h3>Bilingual Ready</h3>
+          <p>Each program includes English titles and Korean type classifications for international audiences.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="7" width="20" height="15" rx="2" ry="2"/>
+              <polyline points="17 2 12 7 7 2"/>
+            </svg>
+          </div>
+          <h3>Stream Companion</h3>
+          <p>Built for KCTV restreamers and archivists. Show viewers what's on, what's next, and what's coming.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Perfect For -->
+    <div class="section-group">
+      <div class="section-label fade-in stagger-4">Perfect For</div>
+      <div class="features-grid fade-in stagger-4">
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--tint)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <h3>Busy Maintainers</h3>
+          <p>Too busy to update your EPG manually every day? This feed stays current so you don't have to.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+            </svg>
+          </div>
+          <h3>Non-Technical Users</h3>
+          <p>No coding skills? No problem. The JSON is plain and readable — easy to plug into any site builder.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+          </div>
+          <h3>Hobbyists & Learners</h3>
+          <p>Great for side projects, research, or anyone curious about DPRK broadcasting schedules.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+              <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+            </svg>
+          </div>
+          <h3>Third-Party Apps</h3>
+          <p>Integrate into IPTV apps, Discord bots, or custom dashboards with zero friction.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quick Start -->
+    <div class="section-group">
+      <div class="section-label fade-in stagger-5">Quick Start</div>
+      <div class="fade-in stagger-5">
+        <div class="code-block">
+          <div class="code-header">
+            <span class="lang">JavaScript</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><code><span class="k">const</span> <span class="n">EPG_URL</span> <span class="k">=</span> <span class="s">"https://raw.githubusercontent.com/Bloxyplay/JucheTV-BloxyPlay/refs/heads/main/kctv_epg.json"</span>;
+
+<span class="k">async function</span> <span class="f">loadEPG</span>() {
+  <span class="k">const</span> <span class="n">res</span> <span class="k">=</span> <span class="k">await</span> <span class="f">fetch</span>(<span class="n">EPG_URL</span>);
+  <span class="k">const</span> <span class="n">data</span> <span class="k">=</span> <span class="k">await</span> <span class="n">res</span>.<span class="f">json</span>();
+
+  <span class="n">data</span>.<span class="n">programs</span>.<span class="f">forEach</span>(<span class="n">prog</span> <span class="k">=></span> {
+    <span class="n">console</span>.<span class="f">log</span>(<span class="s">`${prog.start_time} — ${prog.title}`</span>);
+  <span class="k">}</span>);
+<span class="k">}</span>
+
+<span class="f">loadEPG</span>();</code></pre>
+        </div>
+
+        <div class="code-block">
+          <div class="code-header">
+            <span class="lang">Data Structure</span>
+            <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><code><span class="k">{</span>
+  <span class="n">"channel"</span><span class="k">:</span> <span class="s">"조선중앙텔레비죤 (Korean Central Television)"</span>,
+  <span class="n">"date"</span><span class="k">:</span> <span class="s">"2026-06-20"</span>,
+  <span class="n">"timezone"</span><span class="k">:</span> <span class="s">"Asia/Pyongyang"</span>,
+  <span class="n">"programs"</span><span class="k">:</span> <span class="k">[</span>
+    <span class="k">{</span>
+      <span class="n">"start_time"</span><span class="k">:</span> <span class="s">"09:16"</span>,
+      <span class="n">"end_time"</span><span class="k">:</span> <span class="s">"10:01"</span>,
+      <span class="n">"title"</span><span class="k">:</span> <span class="s">"In Memory of the Great Comrades"</span>,
+      <span class="n">"category"</span><span class="k">:</span> <span class="s">"Special Feature"</span>,
+      <span class="n">"type"</span><span class="k">:</span> <span class="s">"특집 (Special)"</span>
+    <span class="k">}</span>
+  <span class="k">]</span>
+<span class="k">}</span></code></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- CTA -->
+    <div class="cta-card fade-in" style="animation-delay:0.3s">
+      <h3>Ready to add KCTV EPG to your site?</h3>
+      <p>Grab the JSON feed and start building. No signup required.</p>
+      <a class="cta-btn" href="https://raw.githubusercontent.com/Bloxyplay/JucheTV-BloxyPlay/refs/heads/main/kctv_epg.json" target="_blank">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Get the JSON Feed
+      </a>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <span>Maintained by <a href="https://github.com/Bloxyplay" target="_blank" style="color:var(--secondary);text-decoration:none;">@Bloxyplay</a></span>
+    <br><span>Data sourced from Korean Central Television broadcasts</span>
+    <br><span>Made with <span class="heart">♥️</span> by a teenager!</span>
+  </footer>
+
+  <script>
+    const EPG_URL = 'https://raw.githubusercontent.com/Bloxyplay/JucheTV-BloxyPlay/refs/heads/main/kctv_epg.json';
+
+    function timeToMinutes(t) {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    }
+
+    function getNowMinutes() {
+      // Use Pyongyang time (Asia/Pyongyang = UTC+9, no DST)
+      const now = new Date();
+      const pyongyangOffset = 9 * 60; // minutes from UTC
+      const localOffset = now.getTimezoneOffset(); // local offset from UTC in minutes (negative for east of UTC)
+      const totalOffsetMinutes = pyongyangOffset + localOffset;
+      const pyongyangTime = new Date(now.getTime() + totalOffsetMinutes * 60000);
+      return pyongyangTime.getHours() * 60 + pyongyangTime.getMinutes();
+    }
+
+    async function loadEPG() {
+      try {
+        const res = await fetch(EPG_URL);
+        const data = await res.json();
+
+        document.getElementById('epgDate').textContent = data.date;
+        const list = document.getElementById('epgList');
+        list.innerHTML = '';
+        const nowMin = getNowMinutes();
+
+        data.programs.forEach((prog, i) => {
+          const startMin = timeToMinutes(prog.start_time);
+          const endMin = timeToMinutes(prog.end_time);
+          let status = '';
+          if (nowMin >= startMin && nowMin < endMin) status = 'current';
+          else if (nowMin >= endMin) status = 'past';
+
+          const item = document.createElement('div');
+          item.className = `epg-item ${status}`;
+
+          item.innerHTML = `
+            <div class="epg-time">
+              <span class="start">${prog.start_time}</span>
+              <span class="end">${prog.end_time}</span>
+            </div>
+            <div class="epg-bar"></div>
+            <div class="epg-content">
+              <div class="epg-title-row">
+                <span class="epg-title">${prog.title}</span>
+                ${status === 'current' ? '<span class="epg-now-badge">On Air</span>' : ''}
+              </div>
+              <div class="epg-meta-row">
+                <span class="epg-category">${prog.category}</span>
+                <span class="epg-type">${prog.type}</span>
+              </div>
+              ${prog.note ? `<div class="epg-note">${prog.note}</div>` : ''}
+            </div>
+          `;
+          list.appendChild(item);
+        });
+
+        const current = list.querySelector('.current');
+        if (current) {
+          setTimeout(() => current.scrollIntoView({ behavior: 'smooth', block: 'center' }), 300);
+        }
+      } catch (e) {
+        document.getElementById('epgList').innerHTML = `
+          <div style="padding:40px;text-align:center;color:var(--secondary);font-size:13px;">
+            Unable to load EPG. <a href="${EPG_URL}" target="_blank" style="color:var(--tint);text-decoration:none;">View raw JSON</a>
+          </div>
+        `;
+      }
+    }
+
+    function copyCode(btn) {
+      const pre = btn.closest('.code-block').querySelector('pre');
+      navigator.clipboard.writeText(pre.innerText).then(() => {
+        const old = btn.textContent;
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = old, 1500);
+      });
+    }
+
+    // Theme toggle
+    const themeToggle = document.getElementById('themeToggle');
+    const moon = document.getElementById('moon');
+    const sun = document.getElementById('sun');
+    const saved = localStorage.getItem('juche-theme');
+    if (saved === 'dark') {
+      document.documentElement.classList.add('dark');
+      moon.style.display = 'none'; sun.style.display = '';
+    } else if (saved === 'light') {
+      document.documentElement.classList.remove('dark');
+      moon.style.display = ''; sun.style.display = 'none';
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      document.documentElement.classList.add('dark');
+      moon.style.display = 'none'; sun.style.display = '';
+    }
+    themeToggle.addEventListener('click', () => {
+      document.documentElement.classList.toggle('dark');
+      const isDark = document.documentElement.classList.contains('dark');
+      moon.style.display = isDark ? 'none' : '';
+      sun.style.display = isDark ? '' : 'none';
+      localStorage.setItem('juche-theme', isDark ? 'dark' : 'light');
+    });
+
+    loadEPG();
+  </script>
+</body>
+</html>
