@@ -61,7 +61,7 @@
     html { scroll-behavior: smooth; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', 'Helvetica Neue', Arial, 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
       background: var(--bg);
       color: var(--primary);
       min-height: 100vh;
@@ -135,6 +135,38 @@
     .nav-btn:hover { background: rgba(0,0,0,0.05); color: var(--primary); }
     :root.dark .nav-btn:hover { background: rgba(255,255,255,0.08); }
     .nav-btn svg { width: 18px; height: 18px; }
+
+    /* Language Switcher */
+    .lang-switcher {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      background: var(--bg);
+      border: 0.5px solid var(--separator);
+      border-radius: 8px;
+      padding: 2px;
+      margin-right: 6px;
+    }
+    .lang-btn {
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: none;
+      background: transparent;
+      color: var(--secondary);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .lang-btn.active {
+      background: var(--elevated);
+      color: var(--primary);
+      box-shadow: var(--shadow-sm);
+    }
+    .lang-btn:hover:not(.active) {
+      color: var(--primary);
+    }
 
     /* === MAIN === */
     .main {
@@ -613,6 +645,8 @@
       .features-grid { grid-template-columns: 1fr; }
       .epg-header { padding: 14px 16px; }
       .epg-item { padding: 10px 12px; }
+      .lang-switcher { margin-right: 2px; }
+      .lang-btn { padding: 3px 8px; font-size: 11px; }
     }
   </style>
 </head>
@@ -625,9 +659,13 @@
         <div class="logo-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
         </div>
-        Juche TV
+        <span data-i18n="siteName">Juche TV</span>
       </a>
       <div class="nav-right">
+        <div class="lang-switcher">
+          <button class="lang-btn" id="langEng" onclick="setLanguage('eng')">English</button>
+          <button class="lang-btn" id="langCn" onclick="setLanguage('cn')">中文</button>
+        </div>
         <button class="nav-btn" id="themeToggle" title="Toggle theme">
           <svg id="moon" viewBox="0 0 24 24" fill="currentColor"><path d="M21.64,13a1,1,0,0,0-1.05-.14,8.05,8.05,0,0,1-3.37.73A8.15,8.15,0,0,1,9.08,5.49a8.59,8.59,0,0,1,.25-2A1,1,0,0,0,8,2.36,10.14,10.14,0,1,0,22,14.05,1,1,0,0,0,21.64,13Zm-9.5,6.69A8.14,8.14,0,0,1,7.08,5.22v.27A10.15,10.15,0,0,0,17.22,15.63a9.79,9.79,0,0,0,2.1-.22A8.11,8.11,0,0,1,12.14,19.73Z"/></svg>
           <svg id="sun" viewBox="0 0 24 24" fill="currentColor" style="display:none"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
@@ -641,12 +679,12 @@
     <div class="hero">
       <div class="hero-badge fade-in">
         <span class="dot"></span>
-        Free JSON API
+        <span data-i18n="heroBadge">Free JSON API</span>
       </div>
       <h1 class="fade-in" style="animation-delay:0.05s">
-        KCTV <span class="highlight">EPG Guide</span>
+        <span data-i18n="heroTitle1">KCTV</span> <span class="highlight" data-i18n="heroTitle2">EPG Guide</span>
       </h1>
-      <p class="fade-in" style="animation-delay:0.1s">
+      <p class="fade-in" style="animation-delay:0.1s" data-i18n="heroDesc">
         A real-time Electronic Program Guide for Korean Central Television streams.
         Drop it into your site and give your viewers instant schedule visibility.
       </p>
@@ -659,23 +697,24 @@
         <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
       </svg>
       <div>
-        <strong>Schedule Notice:</strong> The EPG is sourced from KCTV broadcasts and updated daily.
+        <strong data-i18n="noticeTitle">Schedule Notice:</strong>
+        <span data-i18n="noticeText">The EPG is sourced from KCTV broadcasts and updated daily.
         On some days, the schedule may be delayed or slightly off due to broadcast timing changes,
         satellite relay delays, manual update gaps, or the creator being busy with homework and assignments — though this is rare.
-        Always cross-check with the live stream if needed.
+        Always cross-check with the live stream if needed.</span>
       </div>
     </div>
 
     <!-- Live Preview -->
     <div class="section-group">
-      <div class="section-label fade-in stagger-2">Live Preview</div>
+      <div class="section-label fade-in stagger-2" data-i18n="livePreview">Live Preview</div>
       <div class="card fade-in stagger-2">
         <div class="epg-header">
           <div class="epg-header-left">
             <div class="epg-logo">KCTV</div>
             <div class="epg-header-info">
               <h3>조선중앙텔레비죤</h3>
-              <p>Korean Central Television</p>
+              <p data-i18n="kctvFullName">Korean Central Television</p>
             </div>
           </div>
           <div class="epg-header-right">
@@ -684,7 +723,7 @@
           </div>
         </div>
         <div class="epg-list" id="epgList">
-          <div style="padding:40px;text-align:center;color:var(--secondary);font-size:13px;">
+          <div style="padding:40px;text-align:center;color:var(--secondary);font-size:13px;" data-i18n="loadingSchedule">
             Loading schedule...
           </div>
         </div>
@@ -693,7 +732,7 @@
 
     <!-- Why Use It -->
     <div class="section-group">
-      <div class="section-label fade-in stagger-3">Why Use It</div>
+      <div class="section-label fade-in stagger-3" data-i18n="whyUseIt">Why Use It</div>
       <div class="features-grid fade-in stagger-3">
         <div class="feature-card">
           <div class="feature-icon">
@@ -701,8 +740,8 @@
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
             </svg>
           </div>
-          <h3>Instant Integration</h3>
-          <p>One JSON endpoint. No auth, no keys, no rate limits. Fetch with a single <code>fetch()</code> call.</p>
+          <h3 data-i18n="feat1Title">Instant Integration</h3>
+          <p data-i18n="feat1Desc">One JSON endpoint. No auth, no keys, no rate limits. Fetch with a single fetch() call.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -710,8 +749,8 @@
               <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/>
             </svg>
           </div>
-          <h3>Daily Refreshed</h3>
-          <p>The schedule updates every day with tomorrow's broadcast lineup, sourced from KCTV programming.</p>
+          <h3 data-i18n="feat2Title">Daily Refreshed</h3>
+          <p data-i18n="feat2Desc">The schedule updates every day with tomorrow's broadcast lineup, sourced from KCTV programming.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -721,8 +760,8 @@
               <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
             </svg>
           </div>
-          <h3>Bilingual Ready</h3>
-          <p>Each program includes English titles and Korean type classifications for international audiences.</p>
+          <h3 data-i18n="feat3Title">Bilingual Ready</h3>
+          <p data-i18n="feat3Desc">Each program includes English titles and Korean type classifications for international audiences.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -731,15 +770,15 @@
               <polyline points="17 2 12 7 7 2"/>
             </svg>
           </div>
-          <h3>Stream Companion</h3>
-          <p>Built for KCTV restreamers and archivists. Show viewers what's on, what's next, and what's coming.</p>
+          <h3 data-i18n="feat4Title">Stream Companion</h3>
+          <p data-i18n="feat4Desc">Built for KCTV restreamers and archivists. Show viewers what's on, what's next, and what's coming.</p>
         </div>
       </div>
     </div>
 
     <!-- Perfect For -->
     <div class="section-group">
-      <div class="section-label fade-in stagger-4">Perfect For</div>
+      <div class="section-label fade-in stagger-4" data-i18n="perfectFor">Perfect For</div>
       <div class="features-grid fade-in stagger-4">
         <div class="feature-card">
           <div class="feature-icon">
@@ -748,8 +787,8 @@
               <polyline points="12 6 12 12 16 14"/>
             </svg>
           </div>
-          <h3>Busy Maintainers</h3>
-          <p>Too busy to update your EPG manually every day? This feed stays current so you don't have to.</p>
+          <h3 data-i18n="pf1Title">Busy Maintainers</h3>
+          <p data-i18n="pf1Desc">Too busy to update your EPG manually every day? This feed stays current so you don't have to.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -757,8 +796,8 @@
               <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
             </svg>
           </div>
-          <h3>Non-Technical Users</h3>
-          <p>No coding skills? No problem. The JSON is plain and readable — easy to plug into any site builder.</p>
+          <h3 data-i18n="pf2Title">Non-Technical Users</h3>
+          <p data-i18n="pf2Desc">No coding skills? No problem. The JSON is plain and readable — easy to plug into any site builder.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -767,8 +806,8 @@
               <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
             </svg>
           </div>
-          <h3>Hobbyists & Learners</h3>
-          <p>Great for side projects, research, or anyone curious about DPRK broadcasting schedules.</p>
+          <h3 data-i18n="pf3Title">Hobbyists & Learners</h3>
+          <p data-i18n="pf3Desc">Great for side projects, research, or anyone curious about DPRK broadcasting schedules.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">
@@ -777,15 +816,15 @@
               <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
             </svg>
           </div>
-          <h3>Third-Party Apps</h3>
-          <p>Integrate into IPTV apps, Discord bots, or custom dashboards with zero friction.</p>
+          <h3 data-i18n="pf4Title">Third-Party Apps</h3>
+          <p data-i18n="pf4Desc">Integrate into IPTV apps, Discord bots, or custom dashboards with zero friction.</p>
         </div>
       </div>
     </div>
 
     <!-- Quick Start -->
     <div class="section-group">
-      <div class="section-label fade-in stagger-5">Quick Start</div>
+      <div class="section-label fade-in stagger-5" data-i18n="quickStart">Quick Start</div>
       <div class="fade-in stagger-5">
         <div class="code-block">
           <div class="code-header">
@@ -809,7 +848,7 @@
 
         <div class="code-block">
           <div class="code-header">
-            <span class="lang">Data Structure</span>
+            <span class="lang" data-i18n="dataStructure">Data Structure</span>
             <button class="copy-btn" onclick="copyCode(this)">Copy</button>
           </div>
           <pre><code><span class="k">{</span>
@@ -834,32 +873,202 @@
 
     <!-- CTA -->
     <div class="cta-card fade-in" style="animation-delay:0.3s">
-      <h3>Ready to add KCTV EPG to your site?</h3>
-      <p>Grab the JSON feed and start building. No signup required.</p>
+      <h3 data-i18n="ctaTitle">Ready to add KCTV EPG to your site?</h3>
+      <p data-i18n="ctaDesc">Grab the JSON feed and start building. No signup required.</p>
       <a class="cta-btn" id="ctaFeedLink" href="https://juche-tv-epg-api.vercel.app/api/bloxyplaytv?ch=KCTV" target="_blank">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
           <line x1="12" y1="15" x2="12" y2="3"/>
         </svg>
-        Get the JSON Feed
+        <span data-i18n="ctaBtn">Get the JSON Feed</span>
       </a>
     </div>
   </main>
 
   <!-- Footer -->
   <footer class="footer">
-    <span>Maintained by <a href="https://github.com/Bloxyplay" target="_blank" style="color:var(--secondary);text-decoration:none;">@Bloxyplay</a></span>
-    <br><span>Data sourced from Korean Central Television broadcasts</span>
-    <br><span>Made with <span class="heart">♥️</span> by a teenager!</span>
+    <span data-i18n="footer1">Maintained by</span> <a href="https://github.com/Bloxyplay" target="_blank" style="color:var(--secondary);text-decoration:none;">@Bloxyplay</a>
+    <br><span data-i18n="footer2">Data sourced from Korean Central Television broadcasts</span>
+    <br><span data-i18n="footer3">Made with</span> <span class="heart">♥️</span> <span data-i18n="footer4">by a teenager!</span>
   </footer>
 
   <script>
+    // ========================
+    // TRANSLATIONS
+    // ========================
+    const i18n = {
+      eng: {
+        siteName: "Juche TV",
+        heroBadge: "Free JSON API",
+        heroTitle1: "KCTV",
+        heroTitle2: "EPG Guide",
+        heroDesc: "A real-time Electronic Program Guide for Korean Central Television streams. Drop it into your site and give your viewers instant schedule visibility.",
+        noticeTitle: "Schedule Notice:",
+        noticeText: "The EPG is sourced from KCTV broadcasts and updated daily. On some days, the schedule may be delayed or slightly off due to broadcast timing changes, satellite relay delays, manual update gaps, or the creator being busy with homework and assignments — though this is rare. Always cross-check with the live stream if needed.",
+        livePreview: "Live Preview",
+        kctvFullName: "Korean Central Television",
+        loadingSchedule: "Loading schedule...",
+        whyUseIt: "Why Use It",
+        feat1Title: "Instant Integration",
+        feat1Desc: "One JSON endpoint. No auth, no keys, no rate limits. Fetch with a single fetch() call.",
+        feat2Title: "Daily Refreshed",
+        feat2Desc: "The schedule updates every day with tomorrow's broadcast lineup, sourced from KCTV programming.",
+        feat3Title: "Bilingual Ready",
+        feat3Desc: "Each program includes English titles and Korean type classifications for international audiences.",
+        feat4Title: "Stream Companion",
+        feat4Desc: "Built for KCTV restreamers and archivists. Show viewers what's on, what's next, and what's coming.",
+        perfectFor: "Perfect For",
+        pf1Title: "Busy Maintainers",
+        pf1Desc: "Too busy to update your EPG manually every day? This feed stays current so you don't have to.",
+        pf2Title: "Non-Technical Users",
+        pf2Desc: "No coding skills? No problem. The JSON is plain and readable — easy to plug into any site builder.",
+        pf3Title: "Hobbyists & Learners",
+        pf3Desc: "Great for side projects, research, or anyone curious about DPRK broadcasting schedules.",
+        pf4Title: "Third-Party Apps",
+        pf4Desc: "Integrate into IPTV apps, Discord bots, or custom dashboards with zero friction.",
+        quickStart: "Quick Start",
+        dataStructure: "Data Structure",
+        ctaTitle: "Ready to add KCTV EPG to your site?",
+        ctaDesc: "Grab the JSON feed and start building. No signup required.",
+        ctaBtn: "Get the JSON Feed",
+        footer1: "Maintained by",
+        footer2: "Data sourced from Korean Central Television broadcasts",
+        footer3: "Made with",
+        footer4: "by a teenager!",
+        onAir: "On Air",
+        unableToLoad: "Unable to load EPG.",
+        viewRawJson: "View raw JSON"
+      },
+      cn: {
+        siteName: "Juche TV",
+        heroBadge: "免费 JSON API",
+        heroTitle1: "KCTV",
+        heroTitle2: "节目指南",
+        heroDesc: "朝鲜中央电视台实时电子节目指南。将其嵌入您的网站，让观众即时查看节目安排。",
+        noticeTitle: "节目安排说明：",
+        noticeText: "节目指南来源于朝鲜中央电视台广播，每日更新。某些日子，节目表可能会因广播时间调整、卫星中继延迟、手动更新间隔或创作者忙于家庭作业而略有延迟或偏差——尽管这种情况很少见。如有需要，请与直播流交叉核对。",
+        livePreview: "实时预览",
+        kctvFullName: "朝鲜中央电视台",
+        loadingSchedule: "正在加载节目表...",
+        whyUseIt: "为什么选择我们",
+        feat1Title: "即时集成",
+        feat1Desc: "一个 JSON 接口。无需认证、无需密钥、无速率限制。只需一次 fetch() 调用即可获取数据。",
+        feat2Title: "每日更新",
+        feat2Desc: "节目表每日更新，包含第二天的广播排期，数据来源于朝鲜中央电视台节目安排。",
+        feat3Title: "双语支持",
+        feat3Desc: "每个节目都包含英文标题和韩文类型分类，方便国际观众使用。",
+        feat4Title: "流媒体伴侣",
+        feat4Desc: "专为 KCTV 转播者和档案管理员打造。向观众展示正在播放、即将播放和后续节目。",
+        perfectFor: "适用人群",
+        pf1Title: "忙碌的维护者",
+        pf1Desc: "每天手动更新节目表太忙？这个数据源保持最新，无需您操心。",
+        pf2Title: "非技术用户",
+        pf2Desc: "没有编程技能？没问题。JSON 格式简洁易读——轻松接入任何建站工具。",
+        pf3Title: "爱好者与学习者",
+        pf3Desc: "非常适合副业项目、研究，或任何对朝鲜广播节目表感兴趣的人。",
+        pf4Title: "第三方应用",
+        pf4Desc: "零摩擦集成到 IPTV 应用、Discord 机器人或自定义仪表板中。",
+        quickStart: "快速开始",
+        dataStructure: "数据结构",
+        ctaTitle: "准备好将 KCTV 节目指南添加到您的网站了吗？",
+        ctaDesc: "获取 JSON 数据源，立即开始构建。无需注册。",
+        ctaBtn: "获取 JSON 数据源",
+        footer1: "维护者",
+        footer2: "数据来源于朝鲜中央电视台广播",
+        footer3: "用",
+        footer4: "由一位青少年制作！",
+        onAir: "正在播出",
+        unableToLoad: "无法加载节目表。",
+        viewRawJson: "查看原始 JSON"
+      }
+    };
+
+    // ========================
+    // LANGUAGE MANAGEMENT
+    // ========================
+    let currentLang = 'eng';
+
+    function getUrlParam(name) {
+      const params = new URLSearchParams(window.location.search);
+      return params.get(name);
+    }
+
+    function setUrlParam(name, value) {
+      const url = new URL(window.location.href);
+      if (value) {
+        url.searchParams.set(name, value);
+      } else {
+        url.searchParams.delete(name);
+      }
+      window.history.replaceState({}, '', url);
+    }
+
+    function detectBrowserLanguage() {
+      const lang = navigator.language || navigator.userLanguage || '';
+      const langLower = lang.toLowerCase();
+      // Chinese variants: zh, zh-CN, zh-TW, zh-HK, etc.
+      if (langLower.startsWith('zh')) {
+        return 'cn';
+      }
+      return 'eng';
+    }
+
+    function setLanguage(lang) {
+      if (lang === currentLang) return;
+      localStorage.setItem('juche-lang', lang);
+      setUrlParam('lang', lang);
+      window.location.reload();
+    }
+
+    function initLanguage() {
+      // Priority: URL param > localStorage > browser detection
+      const urlLang = getUrlParam('lang');
+      const savedLang = localStorage.getItem('juche-lang');
+
+      if (urlLang && (urlLang === 'eng' || urlLang === 'cn')) {
+        currentLang = urlLang;
+      } else if (savedLang && (savedLang === 'eng' || savedLang === 'cn')) {
+        currentLang = savedLang;
+        setUrlParam('lang', currentLang);
+      } else {
+        currentLang = detectBrowserLanguage();
+        localStorage.setItem('juche-lang', currentLang);
+        setUrlParam('lang', currentLang);
+      }
+
+      // Update UI
+      document.getElementById('langEng').classList.toggle('active', currentLang === 'eng');
+      document.getElementById('langCn').classList.toggle('active', currentLang === 'cn');
+
+      // Apply translations
+      applyTranslations();
+
+      // Update html lang attribute
+      document.documentElement.lang = currentLang === 'cn' ? 'zh-CN' : 'en';
+    }
+
+    function applyTranslations() {
+      const dict = i18n[currentLang];
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (dict[key] !== undefined) {
+          el.textContent = dict[key];
+        }
+      });
+    }
+
+    function t(key) {
+      return i18n[currentLang][key] || i18n.eng[key] || key;
+    }
+
+    // ========================
+    // EPG FUNCTIONS
+    // ========================
     function getPyongyangDateString() {
-      // Asia/Pyongyang = UTC+9, no DST
       const now = new Date();
-      const pyongyangOffset = 9 * 60; // minutes from UTC
-      const localOffset = now.getTimezoneOffset(); // local offset from UTC in minutes (negative for east of UTC)
+      const pyongyangOffset = 9 * 60;
+      const localOffset = now.getTimezoneOffset();
       const totalOffsetMinutes = pyongyangOffset + localOffset;
       const pyongyangTime = new Date(now.getTime() + totalOffsetMinutes * 60000);
       const y = pyongyangTime.getFullYear();
@@ -876,10 +1085,9 @@
     }
 
     function getNowMinutes() {
-      // Use Pyongyang time (Asia/Pyongyang = UTC+9, no DST)
       const now = new Date();
-      const pyongyangOffset = 9 * 60; // minutes from UTC
-      const localOffset = now.getTimezoneOffset(); // local offset from UTC in minutes (negative for east of UTC)
+      const pyongyangOffset = 9 * 60;
+      const localOffset = now.getTimezoneOffset();
       const totalOffsetMinutes = pyongyangOffset + localOffset;
       const pyongyangTime = new Date(now.getTime() + totalOffsetMinutes * 60000);
       return pyongyangTime.getHours() * 60 + pyongyangTime.getMinutes();
@@ -902,7 +1110,22 @@
           if (nowMin >= startMin && nowMin < endMin) status = 'current';
           else if (nowMin >= endMin) status = 'past';
 
-          const titleText = typeof prog.title === 'object' ? (prog.title.en || prog.title.ko || '') : prog.title;
+          // Language-aware title selection
+          let titleText = '';
+          if (typeof prog.title === 'object') {
+            if (currentLang === 'cn' && prog.title.zh) {
+              titleText = prog.title.zh;
+            } else if (currentLang === 'cn' && prog.title.ko) {
+              titleText = prog.title.ko;
+            } else if (currentLang === 'eng' && prog.title.en) {
+              titleText = prog.title.en;
+            } else {
+              // Fallback
+              titleText = prog.title.en || prog.title.zh || prog.title.ko || '';
+            }
+          } else {
+            titleText = prog.title;
+          }
 
           const item = document.createElement('div');
           item.className = `epg-item ${status}`;
@@ -916,7 +1139,7 @@
             <div class="epg-content">
               <div class="epg-title-row">
                 <span class="epg-title">${titleText}</span>
-                ${status === 'current' ? '<span class="epg-now-badge">On Air</span>' : ''}
+                ${status === 'current' ? `<span class="epg-now-badge">${t('onAir')}</span>` : ''}
               </div>
               <div class="epg-meta-row">
                 <span class="epg-category">${prog.category || ''}</span>
@@ -934,7 +1157,7 @@
       } catch (e) {
         document.getElementById('epgList').innerHTML = `
           <div style="padding:40px;text-align:center;color:var(--secondary);font-size:13px;">
-            Unable to load EPG. <a href="${EPG_URL}" target="_blank" style="color:var(--tint);text-decoration:none;">View raw JSON</a>
+            ${t('unableToLoad')} <a href="${EPG_URL}" target="_blank" style="color:var(--tint);text-decoration:none;">${t('viewRawJson')}</a>
           </div>
         `;
       }
@@ -949,7 +1172,9 @@
       });
     }
 
-    // Theme toggle
+    // ========================
+    // THEME TOGGLE
+    // ========================
     const themeToggle = document.getElementById('themeToggle');
     const moon = document.getElementById('moon');
     const sun = document.getElementById('sun');
@@ -975,6 +1200,10 @@
     const ctaFeedLink = document.getElementById('ctaFeedLink');
     if (ctaFeedLink) ctaFeedLink.href = EPG_URL;
 
+    // ========================
+    // INIT
+    // ========================
+    initLanguage();
     loadEPG();
   </script>
 </body>
