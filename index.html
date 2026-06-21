@@ -6,7 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="theme-color" content="#F2F2F7" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#1C1C1E" media="(prefers-color-scheme: dark)">
-  <title>KCTV EPG — Korean Central Television Guide For Your Website!</title>
+  <title>KCTV EPG — Korean Central Television Guide</title>
   <style>
     :root {
       --bg: #F2F2F7;
@@ -792,14 +792,15 @@
             <span class="lang">JavaScript</span>
             <button class="copy-btn" onclick="copyCode(this)">Copy</button>
           </div>
-          <pre><code><span class="k">const</span> <span class="n">EPG_URL</span> <span class="k">=</span> <span class="s">"https://raw.githubusercontent.com/Bloxyplay/JucheTV-BloxyPlay/refs/heads/main/kctv_epg.json"</span>;
+          <pre><code><span class="k">const</span> <span class="n">today</span> <span class="k">=</span> <span class="k">new</span> <span class="f">Date</span>().<span class="f">toISOString</span>().<span class="f">slice</span>(<span class="m">0</span>, <span class="m">10</span>); <span class="c">// YYYY-MM-DD</span>
+<span class="k">const</span> <span class="n">EPG_URL</span> <span class="k">=</span> <span class="s">`https://juche-tv-epg-api.vercel.app/api/bloxyplaytv?ch=KCTV&date=${today}`</span>;
 
 <span class="k">async function</span> <span class="f">loadEPG</span>() {
   <span class="k">const</span> <span class="n">res</span> <span class="k">=</span> <span class="k">await</span> <span class="f">fetch</span>(<span class="n">EPG_URL</span>);
   <span class="k">const</span> <span class="n">data</span> <span class="k">=</span> <span class="k">await</span> <span class="n">res</span>.<span class="f">json</span>();
 
   <span class="n">data</span>.<span class="n">programs</span>.<span class="f">forEach</span>(<span class="n">prog</span> <span class="k">=></span> {
-    <span class="n">console</span>.<span class="f">log</span>(<span class="s">`${prog.start_time} — ${prog.title}`</span>);
+    <span class="n">console</span>.<span class="f">log</span>(<span class="s">`${prog.start} — ${prog.title.en}`</span>);
   <span class="k">}</span>);
 <span class="k">}</span>
 
@@ -812,16 +813,18 @@
             <button class="copy-btn" onclick="copyCode(this)">Copy</button>
           </div>
           <pre><code><span class="k">{</span>
-  <span class="n">"channel"</span><span class="k">:</span> <span class="s">"조선중앙텔레비죤 (Korean Central Television)"</span>,
-  <span class="n">"date"</span><span class="k">:</span> <span class="s">"2026-06-20"</span>,
-  <span class="n">"timezone"</span><span class="k">:</span> <span class="s">"Asia/Pyongyang"</span>,
+  <span class="n">"channel"</span><span class="k">:</span> <span class="s">"KCTV"</span>,
+  <span class="n">"date"</span><span class="k">:</span> <span class="s">"2026-06-21"</span>,
   <span class="n">"programs"</span><span class="k">:</span> <span class="k">[</span>
     <span class="k">{</span>
-      <span class="n">"start_time"</span><span class="k">:</span> <span class="s">"09:16"</span>,
-      <span class="n">"end_time"</span><span class="k">:</span> <span class="s">"10:01"</span>,
-      <span class="n">"title"</span><span class="k">:</span> <span class="s">"In Memory of the Great Comrades"</span>,
-      <span class="n">"category"</span><span class="k">:</span> <span class="s">"Special Feature"</span>,
-      <span class="n">"type"</span><span class="k">:</span> <span class="s">"특집 (Special)"</span>
+      <span class="n">"start"</span><span class="k">:</span> <span class="s">"09:18"</span>,
+      <span class="n">"end"</span><span class="k">:</span> <span class="s">"09:43"</span>,
+      <span class="n">"title"</span><span class="k">:</span> <span class="k">{</span>
+        <span class="n">"en"</span><span class="k">:</span> <span class="s">"The Immortal Feats of the Workers' Party"</span>,
+        <span class="n">"ko"</span><span class="k">:</span> <span class="s">"로동당의 은덕일세"</span>,
+        <span class="n">"zh"</span><span class="k">:</span> <span class="s">"劳动党的恩德"</span>
+      <span class="k">}</span>,
+      <span class="n">"category"</span><span class="k">:</span> <span class="s">"Special"</span>
     <span class="k">}</span>
   <span class="k">]</span>
 <span class="k">}</span></code></pre>
@@ -833,7 +836,7 @@
     <div class="cta-card fade-in" style="animation-delay:0.3s">
       <h3>Ready to add KCTV EPG to your site?</h3>
       <p>Grab the JSON feed and start building. No signup required.</p>
-      <a class="cta-btn" href="https://raw.githubusercontent.com/Bloxyplay/JucheTV-BloxyPlay/refs/heads/main/kctv_epg.json" target="_blank">
+      <a class="cta-btn" id="ctaFeedLink" href="https://juche-tv-epg-api.vercel.app/api/bloxyplaytv?ch=KCTV" target="_blank">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
           <polyline points="7 10 12 15 17 10"/>
@@ -852,7 +855,20 @@
   </footer>
 
   <script>
-    const EPG_URL = 'https://raw.githubusercontent.com/Bloxyplay/JucheTV-BloxyPlay/refs/heads/main/kctv_epg.json';
+    function getPyongyangDateString() {
+      // Asia/Pyongyang = UTC+9, no DST
+      const now = new Date();
+      const pyongyangOffset = 9 * 60; // minutes from UTC
+      const localOffset = now.getTimezoneOffset(); // local offset from UTC in minutes (negative for east of UTC)
+      const totalOffsetMinutes = pyongyangOffset + localOffset;
+      const pyongyangTime = new Date(now.getTime() + totalOffsetMinutes * 60000);
+      const y = pyongyangTime.getFullYear();
+      const m = String(pyongyangTime.getMonth() + 1).padStart(2, '0');
+      const d = String(pyongyangTime.getDate()).padStart(2, '0');
+      return `${y}-${m}-${d}`;
+    }
+
+    const EPG_URL = `https://juche-tv-epg-api.vercel.app/api/bloxyplaytv?ch=KCTV&date=${getPyongyangDateString()}`;
 
     function timeToMinutes(t) {
       const [h, m] = t.split(':').map(Number);
@@ -880,29 +896,30 @@
         const nowMin = getNowMinutes();
 
         data.programs.forEach((prog, i) => {
-          const startMin = timeToMinutes(prog.start_time);
-          const endMin = timeToMinutes(prog.end_time);
+          const startMin = timeToMinutes(prog.start);
+          const endMin = timeToMinutes(prog.end);
           let status = '';
           if (nowMin >= startMin && nowMin < endMin) status = 'current';
           else if (nowMin >= endMin) status = 'past';
+
+          const titleText = typeof prog.title === 'object' ? (prog.title.en || prog.title.ko || '') : prog.title;
 
           const item = document.createElement('div');
           item.className = `epg-item ${status}`;
 
           item.innerHTML = `
             <div class="epg-time">
-              <span class="start">${prog.start_time}</span>
-              <span class="end">${prog.end_time}</span>
+              <span class="start">${prog.start}</span>
+              <span class="end">${prog.end}</span>
             </div>
             <div class="epg-bar"></div>
             <div class="epg-content">
               <div class="epg-title-row">
-                <span class="epg-title">${prog.title}</span>
+                <span class="epg-title">${titleText}</span>
                 ${status === 'current' ? '<span class="epg-now-badge">On Air</span>' : ''}
               </div>
               <div class="epg-meta-row">
-                <span class="epg-category">${prog.category}</span>
-                <span class="epg-type">${prog.type}</span>
+                <span class="epg-category">${prog.category || ''}</span>
               </div>
               ${prog.note ? `<div class="epg-note">${prog.note}</div>` : ''}
             </div>
@@ -954,6 +971,9 @@
       sun.style.display = isDark ? '' : 'none';
       localStorage.setItem('juche-theme', isDark ? 'dark' : 'light');
     });
+
+    const ctaFeedLink = document.getElementById('ctaFeedLink');
+    if (ctaFeedLink) ctaFeedLink.href = EPG_URL;
 
     loadEPG();
   </script>
