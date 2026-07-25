@@ -62,16 +62,15 @@ export default async function handler(request) {
 
     const contentType = response.headers.get('content-type') || '';
     const isM3u8 = contentType.includes('mpegurl') || contentType.includes('m3u8') || target.includes('.m3u8');
-    const isTsSegment = target.includes('.ts') || contentType.includes('mp2t');
+    const isBinaryAsset = target.includes('.ts') || target.includes('/key') || contentType.includes('mp2t') || contentType.includes('octet-stream');
 
-    // Forward safe headers
+    // Forward standard headers
     ['content-type', 'cache-control', 'etag', 'content-range', 'accept-ranges'].forEach(h => {
       const val = response.headers.get(h);
       if (val) responseHeaders.set(h, val);
     });
 
-    // For raw binary .ts video segments, pass content-length and encoding through untouched
-    if (isTsSegment) {
+    if (isBinaryAsset) {
       ['content-encoding', 'content-length'].forEach(h => {
         const val = response.headers.get(h);
         if (val) responseHeaders.set(h, val);
@@ -98,8 +97,7 @@ export default async function handler(request) {
 
     let cookieToPass = extractedCookies.length > 0 ? extractedCookies.join('; ') : (kcookie || "");
 
-    let body = response.body;    
-
+    // IF IT'S A M3U8 PLAYLIST: Rewrite text links and embed cookies
     if (isM3u8) {
       const text = await response.text();
       const proxyBase = `${url.origin}${url.pathname}?url=`;
@@ -107,7 +105,6 @@ export default async function handler(request) {
       const wrapUrl = (uri) => {
         const absoluteUrl = new URL(uri, response.url).href;
         let wrapped = `${proxyBase}${encodeURIComponent(absoluteUrl)}`;
-        
         if (cookieToPass) {
            wrapped += `&kcookie=${encodeURIComponent(cookieToPass)}`; 
         }
@@ -122,11 +119,27 @@ export default async function handler(request) {
             return wrapUrl(trimmed);
         });      
       
-      body = rewritten;     
-      responseHeaders.set('content-length', String(new TextEncoder().encode(body).length));     
+      responseHeaders.set('content-length', String(new TextEncoder().encode(rewritten).length));     
+      return new Response(rewritten, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders,
+      });
     }
-    
-    return new Response(body, {
+
+    // IF IT'S A BINARY ASSET (.ts segments or .key decryption files): 
+    // Pull as raw ArrayBuffer so Vercel doesn't corrupt the bits.
+    if (isBinaryAsset) {
+      const buffer = await response.arrayBuffer();
+      return new Response(buffer, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: responseHeaders,
+      });
+    }
+
+    // Default fallback pass-through
+    return new Response(response.body, {
       status: response.status,
       statusText: response.statusText,
       headers: responseHeaders,
