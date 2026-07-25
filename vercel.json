@@ -1,0 +1,8 @@
+{
+  "rewrites": [
+    {
+      "source": "/api/epg/chollimafront/koryotv",
+      "destination": "/api/epg/chollimafront/koryotv.js"
+    }
+  ]
+}
