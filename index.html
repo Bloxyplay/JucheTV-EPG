@@ -1,1 +1,1163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koryo.TV - KCTV Stream & EPG</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8"></script>
+    <style>
+        :root {
+            --bg: #0a0a0f;
+            --bg-elevated: #12121a;
+            --bg-card: #1a1a25;
+            --bg-hover: #222230;
+            --border: #2a2a3a;
+            --border-light: #3a3a50;
+            --text: #e8e8f0;
+            --text-muted: #8888a0;
+            --text-dim: #555570;
+            --accent: #c41e3a;
+            --accent-light: #e63950;
+            --accent-glow: rgba(196, 30, 58, 0.3);
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --live: #ef4444;
+            --live-glow: rgba(239, 68, 68, 0.4);
+        }
 
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: var(--bg-elevated);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--accent);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+        }
+
+        .nav-tabs { display: flex; gap: 0.5rem; }
+
+        .nav-tab {
+            padding: 0.6rem 1.2rem;
+            border-radius: 8px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .nav-tab:hover { color: var(--text); background: var(--bg-hover); }
+        .nav-tab.active { color: var(--text); background: var(--accent); }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 2rem; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .player-section {
+            display: grid;
+            grid-template-columns: 1fr 320px;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .player-wrapper {
+            background: var(--bg-card);
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .player-header {
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .channel-info { display: flex; align-items: center; gap: 0.75rem; }
+
+        .channel-badge {
+            background: var(--accent);
+            color: white;
+            padding: 0.3rem 0.7rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+        }
+
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--live);
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: var(--live);
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+            box-shadow: 0 0 8px var(--live-glow);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(1.2); }
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16/9;
+            background: #000;
+        }
+
+        video { width: 100%; height: 100%; object-fit: contain; }
+
+        .player-overlay {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0,0,0,0.7);
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .player-overlay.show { opacity: 1; pointer-events: all; }
+
+        .play-btn {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: var(--accent);
+            border: none;
+            color: white;
+            font-size: 2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .play-btn:hover { transform: scale(1.1); box-shadow: 0 0 40px var(--accent-glow); }
+
+        .player-controls {
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            border-top: 1px solid var(--border);
+            flex-wrap: wrap;
+        }
+
+        .control-btn {
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            color: var(--text);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 500;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .control-btn:hover { background: var(--border-light); border-color: var(--border-light); }
+        .control-btn.primary { background: var(--accent); border-color: var(--accent); }
+        .control-btn.primary:hover { background: var(--accent-light); border-color: var(--accent-light); }
+
+        .status-text {
+            margin-left: auto;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .sidebar { display: flex; flex-direction: column; gap: 1rem; }
+
+        .panel {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+        }
+
+        .panel-title {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 1rem;
+        }
+
+        .server-list { display: flex; flex-direction: column; gap: 0.5rem; }
+
+        .server-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid transparent;
+        }
+
+        .server-item:hover { background: var(--bg-hover); }
+        .server-item.active { background: var(--bg-hover); border-color: var(--accent); }
+
+        .server-flag {
+            width: 28px;
+            height: 20px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .server-info { flex: 1; }
+        .server-name { font-size: 0.85rem; font-weight: 500; }
+        .server-region { font-size: 0.75rem; color: var(--text-dim); }
+
+        .server-status {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-dim);
+        }
+
+        .server-status.online { background: var(--success); box-shadow: 0 0 6px rgba(34, 197, 94, 0.4); }
+        .server-status.offline { background: var(--error); }
+
+        .latency {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .now-playing { margin-top: 0.5rem; }
+
+        .current-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+            line-height: 1.4;
+        }
+
+        .current-title-ko {
+            font-family: 'Noto Sans KR', sans-serif;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .time-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .next-up {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .next-label {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.25rem;
+        }
+
+        .next-title { font-size: 0.9rem; color: var(--text-muted); }
+
+        .epg-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 1rem;
+        }
+
+        .epg-title { font-size: 1.5rem; font-weight: 700; }
+
+        .date-selector { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+
+        .date-btn {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .date-btn:hover { background: var(--bg-hover); color: var(--text); }
+        .date-btn.active { background: var(--accent); border-color: var(--accent); color: white; }
+
+        .epg-table {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            overflow: hidden;
+        }
+
+        .epg-row {
+            display: grid;
+            grid-template-columns: 100px 1fr 160px;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            transition: background 0.2s;
+            align-items: start;
+        }
+
+        .epg-row:hover { background: var(--bg-hover); }
+        .epg-row.current {
+            background: rgba(196, 30, 58, 0.08);
+            border-left: 3px solid var(--accent);
+        }
+
+        .epg-time {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-variant-numeric: tabular-nums;
+            font-weight: 500;
+        }
+
+        .epg-content { padding-right: 1rem; }
+
+        .epg-title-text {
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 0.2rem;
+        }
+
+        .epg-title-en {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .epg-category {
+            display: inline-block;
+            padding: 0.2rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-hover);
+            border: 1px solid var(--border);
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+        }
+
+        .epg-loading, .epg-error { text-align: center; padding: 3rem; }
+        .epg-loading { color: var(--text-muted); }
+        .epg-error { color: var(--error); }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            padding: 1.25rem;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value { font-size: 1.5rem; font-weight: 700; }
+        .stat-sub { font-size: 0.8rem; color: var(--text-dim); margin-top: 0.25rem; }
+
+        .toast-container {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            animation: slideIn 0.3s ease;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            max-width: 400px;
+        }
+
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.error { border-left: 3px solid var(--error); }
+        .toast.warning { border-left: 3px solid var(--warning); }
+
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .toast-exit { animation: slideOut 0.3s ease forwards; }
+
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+
+        .cors-note {
+            background: rgba(245, 158, 11, 0.1);
+            border: 1px solid var(--warning);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            font-size: 0.85rem;
+            color: var(--warning);
+        }
+
+        .cors-note code {
+            background: var(--bg-hover);
+            padding: 0.15rem 0.4rem;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        @media (max-width: 1024px) {
+            .player-section { grid-template-columns: 1fr; }
+            .sidebar { flex-direction: row; flex-wrap: wrap; }
+            .sidebar .panel { flex: 1; min-width: 280px; }
+        }
+
+        @media (max-width: 768px) {
+            .container { padding: 1rem; }
+            .header { padding: 1rem; }
+            .epg-row { grid-template-columns: 80px 1fr; }
+            .epg-category { display: none; }
+            .nav-tabs { display: none; }
+        }
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <a href="#" class="logo">
+            <div class="logo-icon">📺</div>
+            Koryo.TV
+        </a>
+        <nav class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('stream')">📡 Live Stream</button>
+            <button class="nav-tab" onclick="switchTab('epg')">📋 EPG Guide</button>
+            <button class="nav-tab" onclick="switchTab('about')">ℹ️ About</button>
+        </nav>
+    </header>
+
+    <div class="container">
+        <!-- STREAM TAB -->
+        <div id="tab-stream" class="tab-content active">
+            <div class="cors-note" id="corsBanner">
+                <strong>⚠️ CORS Required:</strong> This player needs a CORS proxy to work. 
+                The stream and EPG APIs don't send CORS headers. 
+                See the <strong>About</strong> tab for Vercel deployment instructions.
+            </div>
+
+            <div class="player-section">
+                <div class="player-wrapper">
+                    <div class="player-header">
+                        <div class="channel-info">
+                            <span class="channel-badge">KCTV</span>
+                            <span style="font-weight:600;">Korean Central Television</span>
+                        </div>
+                        <div class="live-indicator">
+                            <span class="live-dot"></span>
+                            LIVE
+                        </div>
+                    </div>
+                    <div class="video-container">
+                        <video id="video" autoplay muted playsinline></video>
+                        <div class="player-overlay" id="playOverlay">
+                            <button class="play-btn" onclick="startStream()">▶</button>
+                        </div>
+                    </div>
+                    <div class="player-controls">
+                        <button class="control-btn" onclick="toggleMute()" id="muteBtn">🔇 Unmute</button>
+                        <button class="control-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
+                        <button class="control-btn primary" onclick="refreshStream()">🔄 Refresh</button>
+                        <span class="status-text" id="streamStatus">Click play to start</span>
+                    </div>
+                </div>
+
+                <div class="sidebar">
+                    <div class="panel">
+                        <div class="panel-title">Edge Servers</div>
+                        <div class="server-list" id="serverList">
+                            <div class="server-item active" data-server="https://edge-mtr.koryo.tv" onclick="selectServer(this)">
+                                <div class="server-flag" style="background:#d52b1e;">🇨🇦</div>
+                                <div class="server-info">
+                                    <div class="server-name">Canada</div>
+                                    <div class="server-region">Montreal (MTR)</div>
+                                </div>
+                                <div class="server-status" id="status-mtr"></div>
+                                <span class="latency" id="latency-mtr">--</span>
+                            </div>
+                            <div class="server-item" data-server="https://edge-msk.koryo.tv" onclick="selectServer(this)">
+                                <div class="server-flag" style="background:#009739;">🇧🇾</div>
+                                <div class="server-info">
+                                    <div class="server-name">Belarus</div>
+                                    <div class="server-region">Minsk (MSK)</div>
+                                </div>
+                                <div class="server-status" id="status-msk"></div>
+                                <span class="latency" id="latency-msk">--</span>
+                            </div>
+                            <div class="server-item" data-server="https://edge-mcu.koryo.tv" onclick="selectServer(this)">
+                                <div class="server-flag" style="background:#00785e;">🇲🇴</div>
+                                <div class="server-info">
+                                    <div class="server-name">Macau</div>
+                                    <div class="server-region">Macau (MCU)</div>
+                                </div>
+                                <div class="server-status" id="status-mcu"></div>
+                                <span class="latency" id="latency-mcu">--</span>
+                            </div>
+                            <div class="server-item" data-server="https://edge-osk.koryo.tv" onclick="selectServer(this)">
+                                <div class="server-flag" style="background:#bc002d;">🇯🇵</div>
+                                <div class="server-info">
+                                    <div class="server-name">Japan</div>
+                                    <div class="server-region">Osaka (OSK)</div>
+                                </div>
+                                <div class="server-status" id="status-osk"></div>
+                                <span class="latency" id="latency-osk">--</span>
+                            </div>
+                            <div class="server-item" data-server="https://edge-vvo.koryo.tv" onclick="selectServer(this)">
+                                <div class="server-flag" style="background:#0033a0;">🇷🇺</div>
+                                <div class="server-info">
+                                    <div class="server-name">Russia</div>
+                                    <div class="server-region">Vladivostok (VVO)</div>
+                                </div>
+                                <div class="server-status" id="status-vvo"></div>
+                                <span class="latency" id="latency-vvo">--</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="panel">
+                        <div class="panel-title">Now Playing</div>
+                        <div class="now-playing" id="nowPlaying">
+                            <div class="current-title" id="currentTitle">Loading...</div>
+                            <div class="current-title-ko" id="currentTitleKo"></div>
+                            <div class="time-info">
+                                <span id="currentStart">--:--</span>
+                                <span class="time-separator">→</span>
+                                <span id="currentEnd">--:--</span>
+                            </div>
+                            <div class="next-up">
+                                <div class="next-label">Next Up</div>
+                                <div class="next-title" id="nextTitle">Loading...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- EPG TAB -->
+        <div id="tab-epg" class="tab-content">
+            <div class="epg-header">
+                <h2 class="epg-title">📋 Programme Schedule</h2>
+                <div class="date-selector" id="dateSelector"></div>
+            </div>
+            <div class="stats-grid" id="epgStats"></div>
+            <div class="epg-table" id="epgTable">
+                <div class="epg-loading">Loading EPG data...</div>
+            </div>
+        </div>
+
+        <!-- ABOUT TAB -->
+        <div id="tab-about" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-label">Stream Protocol</div>
+                    <div class="stat-value">HLS</div>
+                    <div class="stat-sub">HTTP Live Streaming v6</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Encryption</div>
+                    <div class="stat-value">AES-128</div>
+                    <div class="stat-sub">Per-segment encryption</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Quality</div>
+                    <div class="stat-value">1080p</div>
+                    <div class="stat-sub">Full HD broadcast</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Edge Servers</div>
+                    <div class="stat-value">5</div>
+                    <div class="stat-sub">Global CDN distribution</div>
+                </div>
+            </div>
+
+            <div class="epg-table" style="padding: 2rem;">
+                <h3 style="margin-bottom: 1rem;">How It Works</h3>
+                <p style="color: var(--text-muted); line-height: 1.8; margin-bottom: 1rem;">
+                    This player connects to Koryo.TV's edge servers to stream Korean Central Television (KCTV) live.
+                    The stream uses HLS (HTTP Live Streaming) with AES-128 segment encryption.
+                </p>
+
+                <h4 style="margin: 1.5rem 0 0.5rem;">API Endpoints</h4>
+                <ul style="color: var(--text-muted); line-height: 2; margin-left: 1.5rem;">
+                    <li><code style="background: var(--bg-hover); padding: 0.2rem 0.5rem; border-radius: 4px;">GET /session/anon?quality=1080p</code> — Create streaming session</li>
+                    <li><code style="background: var(--bg-hover); padding: 0.2rem 0.5rem; border-radius: 4px;">GET /kctv/live/{uuid}.m3u8</code> — Get HLS playlist</li>
+                    <li><code style="background: var(--bg-hover); padding: 0.2rem 0.5rem; border-radius: 4px;">GET /health</code> — Server health check</li>
+                    <li><code style="background: var(--bg-hover); padding: 0.2rem 0.5rem; border-radius: 4px;">GET /api/epg/b2ad0bb59619601b6dd7069a.dat</code> — EPG data (gzip + header required)</li>
+                </ul>
+
+                <h4 style="margin: 1.5rem 0 0.5rem;">EPG Data</h4>
+                <p style="color: var(--text-muted); line-height: 1.8;">
+                    The EPG API requires the <code style="background: var(--bg-hover); padding: 0.2rem 0.5rem; border-radius: 4px;">X-Koryo-Epg: 1</code> header
+                    and returns gzip-compressed JSON. Each event contains Korean title, English title (when available),
+                    category, start/end times in Pyongyang time (UTC+9).
+                </p>
+
+                <h4 style="margin: 1.5rem 0 0.5rem;">🚀 Deploy Your Own CORS Proxy on Vercel</h4>
+                <p style="color: var(--text-muted); line-height: 1.8; margin-bottom: 1rem;">
+                    Since Koryo.TV's APIs don't send CORS headers, you need a proxy. Here's how to deploy one on Vercel:
+                </p>
+
+                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 1: Create Project Structure</h5>
+                <pre style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; color: var(--text-muted);">
+my-koryo-proxy/
+├── api/
+│   └── proxy.js
+├── public/
+│   └── index.html   (this file)
+├── vercel.json
+└── package.json</pre>
+
+                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 2: <code>api/proxy.js</code> — The Proxy Handler</h5>
+                <pre style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; color: var(--text-muted);">
+export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Koryo-Epg');
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
+  const target = req.query.url;
+  if (!target) {
+    return res.status(400).json({ error: 'Missing url parameter' });
+  }
+
+  try {
+    const fetchOptions = {
+      method: req.method,
+      headers: {},
+    };
+
+    // Forward specific headers
+    ['x-koryo-epg', 'accept', 'referer', 'origin'].forEach(h => {
+      if (req.headers[h]) fetchOptions.headers[h] = req.headers[h];
+    });
+
+    // Include cookies for session-based requests
+    if (req.headers.cookie) {
+      fetchOptions.headers['cookie'] = req.headers.cookie;
+    }
+
+    const response = await fetch(target, fetchOptions);
+
+    // Forward response headers
+    ['content-type', 'content-encoding', 'set-cookie'].forEach(h => {
+      const val = response.headers.get(h);
+      if (val) res.setHeader(h, val);
+    });
+
+    const body = await response.arrayBuffer();
+    res.status(response.status).send(Buffer.from(body));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+}</pre>
+
+                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 3: <code>vercel.json</code></h5>
+                <pre style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; color: var(--text-muted);">
+{
+  "version": 2,
+  "routes": [
+    { "src": "/api/proxy", "dest": "/api/proxy.js" },
+    { "src": "/(.*)", "dest": "/public/$1" }
+  ]
+}</pre>
+
+                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 4: <code>package.json</code></h5>
+                <pre style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; color: var(--text-muted);">
+{
+  "name": "koryo-proxy",
+  "version": "1.0.0"
+}</pre>
+
+                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 5: Deploy</h5>
+                <pre style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; color: var(--text-muted);">
+# Install Vercel CLI
+npm i -g vercel
+
+# Login
+vercel login
+
+# Deploy
+vercel --prod</pre>
+
+                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 6: Update This Player</h5>
+                <p style="color: var(--text-muted); line-height: 1.8;">
+                    After deploying, change the <code style="background: var(--bg-hover); padding: 0.2rem 0.5rem; border-radius: 4px;">PROXY_BASE</code> 
+                    variable in the JavaScript below to your Vercel URL:
+                </p>
+                <pre style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; color: var(--text-muted);">
+const PROXY_BASE = 'https://juchetv-epg-service.vercel.app//api/proxy?url=';</pre>
+
+                <h4 style="margin: 1.5rem 0 0.5rem;">🔒 Security Note</h4>
+                <p style="color: var(--text-muted); line-height: 1.8;">
+                    The proxy forwards cookies, which means sessions work correctly. However, be aware that 
+                    anyone can use your proxy. Consider adding rate limiting or authentication if needed.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script>
+        // ==================== CONFIG ====================
+        // CHANGE THIS TO YOUR VERCEL PROXY URL AFTER DEPLOYMENT
+        const PROXY_BASE = '';
+        // Example: const PROXY_BASE = 'https://my-koryo-proxy.vercel.app/api/proxy?url=';
+
+        const SERVERS = [
+            { id: 'mtr', name: 'Canada', region: 'Montreal', code: 'MTR', url: 'https://edge-mtr.koryo.tv', flag: '🇨🇦' },
+            { id: 'msk', name: 'Belarus', region: 'Minsk', code: 'MSK', url: 'https://edge-msk.koryo.tv', flag: '🇧🇾' },
+            { id: 'mcu', name: 'Macau', region: 'Macau', code: 'MCU', url: 'https://edge-mcu.koryo.tv', flag: '🇲🇴' },
+            { id: 'osk', name: 'Japan', region: 'Osaka', code: 'OSK', url: 'https://edge-osk.koryo.tv', flag: '🇯🇵' },
+            { id: 'vvo', name: 'Russia', region: 'Vladivostok', code: 'VVO', url: 'https://edge-vvo.koryo.tv', flag: '🇷🇺' }
+        ];
+
+        const EPG_URL = 'https://koryo.tv/api/epg/b2ad0bb59619601b6dd7069a.dat';
+        let currentServer = SERVERS[0];
+        let hls = null;
+        let sessionCookie = null;
+        let epgData = null;
+        let nowPlayingInterval = null;
+
+        // Helper to build URLs (with or without proxy)
+        function buildUrl(target) {
+            return PROXY_BASE ? PROXY_BASE + encodeURIComponent(target) : target;
+        }
+
+        // ==================== UTILS ====================
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `<span>${type === 'success' ? '✅' : type === 'error' ? '❌' : '⚠️'}</span><span>${message}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.add('toast-exit'); setTimeout(() => toast.remove(), 300); }, 4000);
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+            document.getElementById(`tab-${tab}`).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // ==================== SERVER SELECTION ====================
+        async function checkServerHealth(server) {
+            const start = performance.now();
+            try {
+                const resp = await fetch(buildUrl(`${server.url}/health`), {
+                    method: 'GET',
+                    cache: 'no-store',
+                    signal: AbortSignal.timeout(5000)
+                });
+                const latency = Math.round(performance.now() - start);
+                const statusEl = document.getElementById(`status-${server.id}`);
+                const latencyEl = document.getElementById(`latency-${server.id}`);
+                if (resp.ok) {
+                    statusEl.classList.add('online');
+                    latencyEl.textContent = `${latency}ms`;
+                    return { ok: true, latency };
+                } else {
+                    statusEl.classList.add('offline');
+                    latencyEl.textContent = 'ERR';
+                    return { ok: false };
+                }
+            } catch (e) {
+                document.getElementById(`status-${server.id}`).classList.add('offline');
+                document.getElementById(`latency-${server.id}`).textContent = 'ERR';
+                return { ok: false };
+            }
+        }
+
+        async function checkAllServers() {
+            const results = await Promise.all(SERVERS.map(checkServerHealth));
+            const best = results.map((r, i) => ({ ...r, server: SERVERS[i] })).filter(r => r.ok).sort((a, b) => a.latency - b.latency)[0];
+            if (best && best.server.id !== currentServer.id) {
+                showToast(`Auto-selected ${best.server.name} server (${best.latency}ms)`, 'success');
+                selectServerById(best.server.id);
+            }
+        }
+
+        function selectServer(element) {
+            document.querySelectorAll('.server-item').forEach(el => el.classList.remove('active'));
+            element.classList.add('active');
+            currentServer = SERVERS.find(s => s.url === element.dataset.server);
+            showToast(`Switched to ${currentServer.name} server`);
+            refreshStream();
+        }
+
+        function selectServerById(id) {
+            const el = document.querySelector(`[data-server="${SERVERS.find(s => s.id === id).url}"]`);
+            if (el) selectServer(el);
+        }
+
+        // ==================== STREAMING ====================
+        async function createSession() {
+            try {
+                const resp = await fetch(buildUrl(`${currentServer.url}/session/anon?quality=1080p`), {
+                    method: 'GET',
+                    headers: { 'Accept': 'application/json' },
+                    credentials: 'include',
+                    cache: 'no-store'
+                });
+                const data = await resp.json();
+                if (data.success) {
+                    sessionCookie = true;
+                    return true;
+                }
+                throw new Error(data.error || 'Session failed');
+            } catch (e) {
+                showToast(`Session error: ${e.message}`, 'error');
+                return false;
+            }
+        }
+
+        async function startStream() {
+            if (!PROXY_BASE) {
+                showToast('Please deploy the CORS proxy first (see About tab)', 'warning');
+                document.getElementById('streamStatus').textContent = 'CORS proxy required - see About tab';
+                return;
+            }
+
+            const video = document.getElementById('video');
+            const overlay = document.getElementById('playOverlay');
+            const status = document.getElementById('streamStatus');
+
+            overlay.classList.remove('show');
+            status.textContent = 'Creating session...';
+
+            const sessionOk = await createSession();
+            if (!sessionOk) {
+                overlay.classList.add('show');
+                status.textContent = 'Session failed - click to retry';
+                return;
+            }
+
+            const uuid = crypto.randomUUID();
+            const m3u8Url = buildUrl(`${currentServer.url}/kctv/live/${uuid}.m3u8`);
+
+            status.textContent = 'Loading stream...';
+
+            if (hls) { hls.destroy(); hls = null; }
+
+            if (Hls.isSupported()) {
+                hls = new Hls({
+                    maxBufferLength: 90,
+                    liveSyncDuration: 45,
+                    liveMaxLatencyDuration: Infinity,
+                    maxLiveSyncPlaybackRate: 1,
+                    highBufferWatchdogPeriod: 3,
+                    xhrSetup: function(xhr, url) {
+                        xhr.withCredentials = true;
+                    }
+                });
+
+                hls.on(Hls.Events.MEDIA_ATTACHED, () => { status.textContent = 'Buffering...'; });
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                    status.textContent = 'Playing live';
+                    video.play().catch(() => {});
+                    showToast('Stream started successfully');
+                });
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                    if (data.fatal) {
+                        status.textContent = `Error: ${data.type}`;
+                        showToast(`Stream error: ${data.type}`, 'error');
+                        if (data.type === Hls.ErrorTypes.NETWORK_ERROR) hls.startLoad();
+                    }
+                });
+
+                hls.loadSource(m3u8Url);
+                hls.attachMedia(video);
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = m3u8Url;
+                video.addEventListener('loadedmetadata', () => { video.play(); status.textContent = 'Playing live'; });
+            } else {
+                showToast('HLS not supported in this browser', 'error');
+                status.textContent = 'Browser not supported';
+            }
+        }
+
+        function refreshStream() {
+            if (hls) { hls.destroy(); hls = null; }
+            document.getElementById('video').src = '';
+            document.getElementById('playOverlay').classList.add('show');
+            document.getElementById('streamStatus').textContent = 'Click play to start';
+            startStream();
+        }
+
+        function toggleMute() {
+            const video = document.getElementById('video');
+            const btn = document.getElementById('muteBtn');
+            video.muted = !video.muted;
+            btn.textContent = video.muted ? '🔇 Unmute' : '🔊 Mute';
+        }
+
+        function toggleFullscreen() {
+            const container = document.querySelector('.video-container');
+            if (document.fullscreenElement) document.exitFullscreen();
+            else container.requestFullscreen();
+        }
+
+        // ==================== EPG ====================
+        async function fetchEPG() {
+            const table = document.getElementById('epgTable');
+            table.innerHTML = '<div class="epg-loading">Loading EPG data...</div>';
+
+            try {
+                const resp = await fetch(buildUrl(EPG_URL), {
+                    headers: { 'X-Koryo-Epg': '1' }
+                });
+
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+                const blob = await resp.blob();
+                const ds = new DecompressionStream('gzip');
+                const decompressed = await new Response(blob.stream().pipeThrough(ds)).text();
+                epgData = JSON.parse(decompressed);
+
+                renderEPG();
+                updateNowPlaying();
+
+                if (nowPlayingInterval) clearInterval(nowPlayingInterval);
+                nowPlayingInterval = setInterval(updateNowPlaying, 30000);
+
+                showToast(`Loaded ${epgData.events.length} EPG events`);
+            } catch (e) {
+                table.innerHTML = `<div class="epg-error">Failed to load EPG: ${e.message}<br><button class="control-btn primary" onclick="fetchEPG()" style="margin-top:1rem;">Retry</button></div>`;
+                showToast(`EPG load failed: ${e.message}`, 'error');
+            }
+        }
+
+        function renderEPG() {
+            if (!epgData) return;
+
+            const byDate = {};
+            epgData.events.forEach(ev => {
+                const date = ev.startUtc.substring(0, 10);
+                if (!byDate[date]) byDate[date] = [];
+                byDate[date].push(ev);
+            });
+
+            const dates = Object.keys(byDate).sort();
+
+            const dateSelector = document.getElementById('dateSelector');
+            dateSelector.innerHTML = dates.map((d, i) => {
+                const label = new Date(d + 'T00:00:00+09:00').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                return `<button class="date-btn ${i === dates.length - 1 ? 'active' : ''}" onclick="showDate('${d}', this)">${label}</button>`;
+            }).join('');
+
+            const stats = document.getElementById('epgStats');
+            const categories = {};
+            epgData.events.forEach(ev => { categories[ev.category] = (categories[ev.category] || 0) + 1; });
+            const topCats = Object.entries(categories).sort((a, b) => b[1] - a[1]).slice(0, 3);
+
+            stats.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-label">Total Events</div>
+                    <div class="stat-value">${epgData.events.length}</div>
+                    <div class="stat-sub">${dates.length} days</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Date Range</div>
+                    <div class="stat-value">${dates.length}</div>
+                    <div class="stat-sub">${dates[0]} to ${dates[dates.length - 1]}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Top Category</div>
+                    <div class="stat-value">${topCats[0]?.[0] || 'N/A'}</div>
+                    <div class="stat-sub">${topCats[0]?.[1] || 0} events</div>
+                </div>
+            `;
+
+            showDate(dates[dates.length - 1], dateSelector.lastElementChild);
+        }
+
+        function showDate(date, btn) {
+            document.querySelectorAll('.date-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            const events = epgData.events.filter(ev => ev.startUtc.startsWith(date));
+            events.sort((a, b) => new Date(a.startUtc) - new Date(b.startUtc));
+
+            const now = new Date();
+
+            const table = document.getElementById('epgTable');
+            table.innerHTML = events.map(ev => {
+                const start = new Date(ev.startUtc);
+                const end = new Date(ev.endUtc);
+                const isCurrent = now >= start && now < end;
+                const timeStr = start.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Pyongyang' });
+                const endStr = end.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Pyongyang' });
+
+                return `
+                    <div class="epg-row ${isCurrent ? 'current' : ''}">
+                        <div class="epg-time">${timeStr}<br><span style="color:var(--text-dim);font-size:0.75rem;">${endStr}</span></div>
+                        <div class="epg-content">
+                            <div class="epg-title-text">${ev.title}</div>
+                            ${ev.titleEn ? `<div class="epg-title-en">${ev.titleEn}</div>` : ''}
+                        </div>
+                        <div class="epg-category">${ev.category}</div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updateNowPlaying() {
+            if (!epgData) return;
+
+            const now = Date.now();
+            const events = [...epgData.events].sort((a, b) => new Date(a.startUtc) - new Date(b.startUtc));
+
+            const current = events.find(ev => {
+                const start = new Date(ev.startUtc).getTime();
+                const end = new Date(ev.endUtc).getTime();
+                return now >= start && now < end;
+            });
+
+            const next = events.find(ev => new Date(ev.startUtc).getTime() > now);
+
+            if (current) {
+                document.getElementById('currentTitle').textContent = current.titleEn || current.title;
+                document.getElementById('currentTitleKo').textContent = current.title;
+                document.getElementById('currentStart').textContent = new Date(current.startUtc).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Pyongyang' });
+                document.getElementById('currentEnd').textContent = new Date(current.endUtc).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Pyongyang' });
+            } else {
+                document.getElementById('currentTitle').textContent = 'No broadcast info';
+                document.getElementById('currentTitleKo').textContent = '';
+            }
+
+            if (next) {
+                document.getElementById('nextTitle').textContent = next.titleEn || next.title;
+            } else {
+                document.getElementById('nextTitle').textContent = 'No upcoming events';
+            }
+        }
+
+        // ==================== INIT ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            // Hide CORS banner if proxy is configured
+            if (PROXY_BASE) {
+                document.getElementById('corsBanner').style.display = 'none';
+            }
+            checkAllServers();
+            fetchEPG();
+            setInterval(fetchEPG, 300000);
+        });
+    </script>
+</body>
+</html>
