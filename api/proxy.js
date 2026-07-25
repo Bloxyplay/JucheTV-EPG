@@ -3,7 +3,6 @@ export const config = { runtime: 'edge' };
 export default async function handler(request) {
   const reqOrigin = request.headers.get('Origin');
   
-  // 1. Broaden CORS for Video Players
   const corsHeaders = {
     'Access-Control-Allow-Origin': reqOrigin || '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, HEAD',
@@ -16,13 +15,15 @@ export default async function handler(request) {
     corsHeaders['Access-Control-Allow-Credentials'] = 'true';
   }
 
-  // Use 200 OK instead of 204. Some older video players drop 204 responses.
   if (request.method === 'OPTIONS') {
     return new Response('OK', { status: 200, headers: corsHeaders });
   }
 
   const url = new URL(request.url);
   const target = url.searchParams.get('url');
+  
+  // 1. Intercept the custom cookie passed via URL
+  const kcookie = url.searchParams.get('kcookie'); 
 
   if (!target) {
     return new Response(JSON.stringify({ error: 'Missing url parameter' }), {
@@ -33,17 +34,25 @@ export default async function handler(request) {
 
   try {
     const fetchHeaders = new Headers();
-    
-    // 2. Add 'range' so the proxy can handle chunked video requests
-    const forwardHeaders = ['x-koryo-epg', 'accept', 'cookie', 'user-agent', 'range'];
+    const forwardHeaders = ['x-koryo-epg', 'accept', 'user-agent', 'range'];
     
     forwardHeaders.forEach(h => {
       const val = request.headers.get(h);
       if (val) fetchHeaders.set(h, val);
     });
     
+    // 2. Prioritize our injected cookie; fallback to browser cookie if it exists
+    if (kcookie) {
+      fetchHeaders.set('cookie', kcookie);
+    } else {
+      const browserCookie = request.headers.get('cookie');
+      if (browserCookie) fetchHeaders.set('cookie', browserCookie);
+    }
+    
     fetchHeaders.set('referer', 'https://koryo.tv/channel/kctv');
     fetchHeaders.set('origin', 'https://koryo.tv');
+    fetchHeaders.delete('x-forwarded-for');
+    fetchHeaders.delete('x-real-ip');
 
     const response = await fetch(target, {
       method: request.method,
@@ -57,18 +66,20 @@ export default async function handler(request) {
     const contentType = response.headers.get('content-type') || '';
     const isM3u8 = contentType.includes('mpegurl') || contentType.includes('m3u8') || target.includes('.m3u8');
 
-    // 3. ONLY forward safe stream headers. Explicitly drop content-encoding 
-    // and content-length for passthrough .ts streams to prevent corruption.
     ['content-type', 'cache-control', 'etag', 'content-range', 'accept-ranges'].forEach(h => {
       const val = response.headers.get(h);
       if (val) responseHeaders.set(h, val);
     });
-
-    const setCookies = typeof response.headers.getSetCookie === 'function' 
-      ? response.headers.getSetCookie() 
-      : [];
-      
+    
+    // 3. Extract cookies to pass them manually
+    const setCookies = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : [];
+    let extractedCookies = [];
+    
     setCookies.forEach(cookie => {
+      // Extract just the "key=value" part for our manual URL injection
+      const keyVal = cookie.split(';')[0];
+      if (keyVal) extractedCookies.push(keyVal);
+
       let rewritten = cookie
         .replace(/;\s*Domain=[^;]+/gi, '')
         .replace(/;\s*Path=[^;]+/gi, '; Path=/')
@@ -80,6 +91,9 @@ export default async function handler(request) {
       responseHeaders.append('set-cookie', rewritten);
     });
 
+    // 4. Determine which cookie string to pass forward to the next .ts chunks
+    let cookieToPass = extractedCookies.length > 0 ? extractedCookies.join('; ') : (kcookie || "");
+
     let body = response.body;    
 
     if (isM3u8) {
@@ -88,10 +102,15 @@ export default async function handler(request) {
       
       const wrapUrl = (uri) => {
         const absoluteUrl = new URL(uri, response.url).href;
-        return `${proxyBase}${encodeURIComponent(absoluteUrl)}`;
+        let wrapped = `${proxyBase}${encodeURIComponent(absoluteUrl)}`;
+        
+        // 5. Inject the cookie directly into every .ts fragment URL
+        if (cookieToPass) {
+           wrapped += `&kcookie=${encodeURIComponent(cookieToPass)}`; 
+        }
+        return wrapped;
       };
 
-      // 4. Bulletproof regex using .trim() to combat \r\n line-ending bugs
       let rewritten = text
         .replace(/URI="([^"]+)"/g, (match, uri) => `URI="${wrapUrl(uri.trim())}"`)
         .replace(/^(?!#)(.+)$/gm, (match, p1) => {
@@ -101,8 +120,6 @@ export default async function handler(request) {
         });      
       
       body = rewritten;     
-      
-      // Re-calculate content length since we modified the text body
       responseHeaders.set('content-length', String(new TextEncoder().encode(body).length));     
     }
     
