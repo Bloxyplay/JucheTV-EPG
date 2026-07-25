@@ -1,154 +1,110 @@
-export const config = { runtime: 'edge' };
+const express = require('express');
+const cors = require('cors');
 
-export default async function handler(request) {
-  const reqOrigin = request.headers.get('Origin');
-  
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': reqOrigin || '*',
-    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, HEAD',
-    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Referer, Origin, Cookie, Range, Cache-Control, Pragma, X-Koryo-Epg',
-    'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
-    'Access-Control-Max-Age': '86400',
-  };
-  
-  if (reqOrigin) {
-    corsHeaders['Access-Control-Allow-Credentials'] = 'true';
-  }
+const app = express();
+const PORT = process.env.PORT || 3000;
 
-  if (request.method === 'OPTIONS') {
-    return new Response('OK', { status: 200, headers: corsHeaders });
-  }
+app.use(cors({
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'OPTIONS', 'HEAD']
+}));
 
-  const url = new URL(request.url);
-  const target = url.searchParams.get('url');
-  const kcookie = url.searchParams.get('kcookie'); 
+app.get('/proxy', async (req, res) => {
+  const target = req.query.url;
+  const kcookie = req.query.kcookie;
 
   if (!target) {
-    return new Response(JSON.stringify({ error: 'Missing url parameter' }), {
-      status: 400,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return res.status(400).json({ error: 'Missing url parameter' });
   }
 
   try {
     const fetchHeaders = new Headers();
-    const forwardHeaders = ['x-koryo-epg', 'accept', 'user-agent', 'range'];
     
-    forwardHeaders.forEach(h => {
-      const val = request.headers.get(h);
+    ['x-koryo-epg', 'accept', 'user-agent', 'range'].forEach(h => {
+      const val = req.headers[h];
       if (val) fetchHeaders.set(h, val);
     });
-    
+
     if (kcookie) {
       fetchHeaders.set('cookie', kcookie);
-    } else {
-      const browserCookie = request.headers.get('cookie');
-      if (browserCookie) fetchHeaders.set('cookie', browserCookie);
+    } else if (req.headers.cookie) {
+      fetchHeaders.set('cookie', req.headers.cookie);
     }
-    
+
     fetchHeaders.set('referer', 'https://koryo.tv/channel/kctv');
     fetchHeaders.set('origin', 'https://koryo.tv');
-    fetchHeaders.delete('x-forwarded-for');
-    fetchHeaders.delete('x-real-ip');
 
     const response = await fetch(target, {
-      method: request.method,
+      method: req.method,
       headers: fetchHeaders,
       redirect: 'follow',
     });
 
-    const responseHeaders = new Headers();
-    Object.entries(corsHeaders).forEach(([k, v]) => responseHeaders.set(k, v));
+    response.headers.forEach((val, key) => {
+      if (key.toLowerCase() === 'set-cookie') {
+        const fixedCookies = response.headers.getSetCookie?.() || [val];
+        fixedCookies.forEach(c => {
+          let rewritten = c
+            .replace(/;\s*Domain=[^;]+/gi, '')
+            .replace(/;\s*Path=[^;]+/gi, '; Path=/')
+            .replace(/;\s*SameSite=[^;]+/gi, '; SameSite=None');
+          if (!rewritten.includes('Secure')) rewritten += '; Secure';
+          res.append('Set-Cookie', rewritten);
+        });
+      } else if (!['content-encoding', 'content-length'].includes(key.toLowerCase())) {
+        res.setHeader(key, val);
+      }
+    });
 
     const contentType = response.headers.get('content-type') || '';
     const isM3u8 = contentType.includes('mpegurl') || contentType.includes('m3u8') || target.includes('.m3u8');
-    const isBinaryAsset = target.includes('.ts') || target.includes('/key') || contentType.includes('mp2t') || contentType.includes('octet-stream');
+    const isBinary = target.includes('.ts') || target.includes('/key') || contentType.includes('mp2t') || contentType.includes('octet-stream');
 
-    // Forward standard headers
-    ['content-type', 'cache-control', 'etag', 'content-range', 'accept-ranges'].forEach(h => {
-      const val = response.headers.get(h);
-      if (val) responseHeaders.set(h, val);
-    });
-
-    if (isBinaryAsset) {
-      ['content-encoding', 'content-length'].forEach(h => {
-        const val = response.headers.get(h);
-        if (val) responseHeaders.set(h, val);
-      });
-    }
-
-    const setCookies = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : [];
-    let extractedCookies = [];
-    
-    setCookies.forEach(cookie => {
-      const keyVal = cookie.split(';')[0];
-      if (keyVal) extractedCookies.push(keyVal);
-
-      let rewritten = cookie
-        .replace(/;\s*Domain=[^;]+/gi, '')
-        .replace(/;\s*Path=[^;]+/gi, '; Path=/')
-        .replace(/;\s*SameSite=[^;]+/gi, '; SameSite=None');      
-      
-      if (!rewritten.includes('Secure')) {
-        rewritten += '; Secure';
-      }     
-      responseHeaders.append('set-cookie', rewritten);
-    });
-
-    let cookieToPass = extractedCookies.length > 0 ? extractedCookies.join('; ') : (kcookie || "");
-
-    // IF IT'S A M3U8 PLAYLIST: Rewrite text links and embed cookies
     if (isM3u8) {
-      const text = await response.text();
-      const proxyBase = `${url.origin}${url.pathname}?url=`;
-      
+      let text = await response.text();
+      const host = req.get('host');
+      const protocol = req.protocol;
+      const proxyBase = `${protocol}://${host}/proxy?url=`;
+
+      const rawCookies = response.headers.getSetCookie?.() || [];
+      const extracted = rawCookies.map(c => c.split(';')[0]).join('; ');
+      const cookieToPass = extracted || kcookie || '';
+
       const wrapUrl = (uri) => {
         const absoluteUrl = new URL(uri, response.url).href;
         let wrapped = `${proxyBase}${encodeURIComponent(absoluteUrl)}`;
         if (cookieToPass) {
-           wrapped += `&kcookie=${encodeURIComponent(cookieToPass)}`; 
+          wrapped += `&kcookie=${encodeURIComponent(cookieToPass)}`;
         }
         return wrapped;
       };
 
-      let rewritten = text
+      text = text
         .replace(/URI="([^"]+)"/g, (match, uri) => `URI="${wrapUrl(uri.trim())}"`)
         .replace(/^(?!#)(.+)$/gm, (match, p1) => {
-            const trimmed = p1.trim();
-            if (!trimmed) return match;
-            return wrapUrl(trimmed);
-        });      
-      
-      responseHeaders.set('content-length', String(new TextEncoder().encode(rewritten).length));     
-      return new Response(rewritten, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: responseHeaders,
-      });
+          const trimmed = p1.trim();
+          if (!trimmed) return match;
+          return wrapUrl(trimmed);
+        });
+
+      res.setHeader('Content-Length', Buffer.byteLength(text));
+      return res.status(response.status).send(text);
     }
 
-    // IF IT'S A BINARY ASSET (.ts segments or .key decryption files): 
-    // Pull as raw ArrayBuffer so Vercel doesn't corrupt the bits.
-    if (isBinaryAsset) {
+    if (isBinary || contentType.includes('xml') || contentType.includes('json')) {
       const buffer = await response.arrayBuffer();
-      return new Response(buffer, {
-        status: response.status,
-        statusText: response.statusText,
-        headers: responseHeaders,
-      });
+      res.setHeader('Content-Length', buffer.byteLength);
+      return res.status(response.status).send(Buffer.from(buffer));
     }
 
-    // Default fallback pass-through
-    return new Response(response.body, {
-      status: response.status,
-      statusText: response.statusText,
-      headers: responseHeaders,
-    });
+    response.body.pipe(res);
 
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    res.status(500).json({ error: error.message });
   }
-}
+});
+
+app.listen(PORT, () => {
+  console.log(`Koryo Proxy running on port ${PORT}`);
+});
