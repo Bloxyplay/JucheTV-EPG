@@ -21,8 +21,6 @@ export default async function handler(request) {
 
   const url = new URL(request.url);
   const target = url.searchParams.get('url');
-  
-  // 1. Intercept the custom cookie passed via URL
   const kcookie = url.searchParams.get('kcookie'); 
 
   if (!target) {
@@ -41,7 +39,6 @@ export default async function handler(request) {
       if (val) fetchHeaders.set(h, val);
     });
     
-    // 2. Prioritize our injected cookie; fallback to browser cookie if it exists
     if (kcookie) {
       fetchHeaders.set('cookie', kcookie);
     } else {
@@ -65,18 +62,26 @@ export default async function handler(request) {
 
     const contentType = response.headers.get('content-type') || '';
     const isM3u8 = contentType.includes('mpegurl') || contentType.includes('m3u8') || target.includes('.m3u8');
+    const isTsSegment = target.includes('.ts') || contentType.includes('mp2t');
 
+    // Forward safe headers
     ['content-type', 'cache-control', 'etag', 'content-range', 'accept-ranges'].forEach(h => {
       const val = response.headers.get(h);
       if (val) responseHeaders.set(h, val);
     });
-    
-    // 3. Extract cookies to pass them manually
+
+    // For raw binary .ts video segments, pass content-length and encoding through untouched
+    if (isTsSegment) {
+      ['content-encoding', 'content-length'].forEach(h => {
+        const val = response.headers.get(h);
+        if (val) responseHeaders.set(h, val);
+      });
+    }
+
     const setCookies = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : [];
     let extractedCookies = [];
     
     setCookies.forEach(cookie => {
-      // Extract just the "key=value" part for our manual URL injection
       const keyVal = cookie.split(';')[0];
       if (keyVal) extractedCookies.push(keyVal);
 
@@ -91,7 +96,6 @@ export default async function handler(request) {
       responseHeaders.append('set-cookie', rewritten);
     });
 
-    // 4. Determine which cookie string to pass forward to the next .ts chunks
     let cookieToPass = extractedCookies.length > 0 ? extractedCookies.join('; ') : (kcookie || "");
 
     let body = response.body;    
@@ -104,7 +108,6 @@ export default async function handler(request) {
         const absoluteUrl = new URL(uri, response.url).href;
         let wrapped = `${proxyBase}${encodeURIComponent(absoluteUrl)}`;
         
-        // 5. Inject the cookie directly into every .ts fragment URL
         if (cookieToPass) {
            wrapped += `&kcookie=${encodeURIComponent(cookieToPass)}`; 
         }
