@@ -1,25 +1,29 @@
 export const config = { runtime: 'edge' };
 
 export default async function handler(request) {
-  // 1. Dynamic Origin for Credentials
-  const origin = request.headers.get('Origin') || '*';
+  const reqOrigin = request.headers.get('Origin');
   
-  // Base URL of your proxy so we can loop requests back to it
-  const proxyBaseUrl = new URL(request.url); 
-
+  // 1. Broaden CORS for Video Players
   const corsHeaders = {
-    'Access-Control-Allow-Origin': origin, // Fixed: Cannot be '*' with credentials
+    'Access-Control-Allow-Origin': reqOrigin || '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, HEAD',
-    'Access-Control-Allow-Headers': 'Content-Type, X-Koryo-Epg, Authorization, Accept, Referer, Origin, Cookie',
-    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization, Accept, Referer, Origin, Cookie, Range, Cache-Control, Pragma, X-Koryo-Epg',
+    'Access-Control-Expose-Headers': 'Content-Length, Content-Range, Accept-Ranges',
     'Access-Control-Max-Age': '86400',
   };
-
-  if (request.method === 'OPTIONS') {
-    return new Response(null, { status: 204, headers: corsHeaders });
+  
+  if (reqOrigin) {
+    corsHeaders['Access-Control-Allow-Credentials'] = 'true';
   }
 
-  const target = proxyBaseUrl.searchParams.get('url');
+  // Use 200 OK instead of 204. Some older video players drop 204 responses.
+  if (request.method === 'OPTIONS') {
+    return new Response('OK', { status: 200, headers: corsHeaders });
+  }
+
+  const url = new URL(request.url);
+  const target = url.searchParams.get('url');
+
   if (!target) {
     return new Response(JSON.stringify({ error: 'Missing url parameter' }), {
       status: 400,
@@ -28,18 +32,18 @@ export default async function handler(request) {
   }
 
   try {
-    const fetchHeaders = {};    
+    const fetchHeaders = new Headers();
     
-    // Forward browser headers
-    const forwardHeaders = ['x-koryo-epg', 'accept', 'cookie', 'user-agent'];
+    // 2. Add 'range' so the proxy can handle chunked video requests
+    const forwardHeaders = ['x-koryo-epg', 'accept', 'cookie', 'user-agent', 'range'];
+    
     forwardHeaders.forEach(h => {
       const val = request.headers.get(h);
-      if (val) fetchHeaders[h] = val;
+      if (val) fetchHeaders.set(h, val);
     });
     
-    // Always set Referer and Origin to Koryo.TV
-    fetchHeaders['referer'] = 'https://koryo.tv/channel/kctv';
-    fetchHeaders['origin'] = 'https://koryo.tv';
+    fetchHeaders.set('referer', 'https://koryo.tv/channel/kctv');
+    fetchHeaders.set('origin', 'https://koryo.tv');
 
     const response = await fetch(target, {
       method: request.method,
@@ -47,81 +51,67 @@ export default async function handler(request) {
       redirect: 'follow',
     });
 
-    // Use Headers API to handle multiple Set-Cookie headers properly
-    const responseHeaders = new Headers(corsHeaders);  
-    
-    // Forward safe content headers (Removed content-encoding and content-length for now)
-    ['content-type', 'cache-control', 'etag'].forEach(h => {
+    const responseHeaders = new Headers();
+    Object.entries(corsHeaders).forEach(([k, v]) => responseHeaders.set(k, v));
+
+    const contentType = response.headers.get('content-type') || '';
+    const isM3u8 = contentType.includes('mpegurl') || contentType.includes('m3u8') || target.includes('.m3u8');
+
+    // 3. ONLY forward safe stream headers. Explicitly drop content-encoding 
+    // and content-length for passthrough .ts streams to prevent corruption.
+    ['content-type', 'cache-control', 'etag', 'content-range', 'accept-ranges'].forEach(h => {
       const val = response.headers.get(h);
       if (val) responseHeaders.set(h, val);
     });
 
-    // Rewrite Set-Cookie safely
-    // Edge API getSetCookie() gets all cookies as an array. Using .get() merges them and breaks them.
-    if (response.headers.getSetCookie) {
-      const cookies = response.headers.getSetCookie();
-      cookies.forEach(cookieStr => {
-        let rewritten = cookieStr
-          .replace(/;\s*Domain=[^;]+/gi, '')
-          .replace(/;\s*Path=[^;]+/gi, '; Path=/')
-          .replace(/;\s*SameSite=[^;]+/gi, '; SameSite=None');      
-        
-        if (!rewritten.includes('Secure')) {
-          rewritten += '; Secure';
-        }     
-        responseHeaders.append('set-cookie', rewritten);
-      });
-    }
+    const setCookies = typeof response.headers.getSetCookie === 'function' 
+      ? response.headers.getSetCookie() 
+      : [];
+      
+    setCookies.forEach(cookie => {
+      let rewritten = cookie
+        .replace(/;\s*Domain=[^;]+/gi, '')
+        .replace(/;\s*Path=[^;]+/gi, '; Path=/')
+        .replace(/;\s*SameSite=[^;]+/gi, '; SameSite=None');      
+      
+      if (!rewritten.includes('Secure')) {
+        rewritten += '; Secure';
+      }     
+      responseHeaders.append('set-cookie', rewritten);
+    });
 
     let body = response.body;    
-    const contentType = response.headers.get('content-type') || '';
-    
-    // Check if response is a playlist
-    if (contentType.includes('mpegurl') || contentType.includes('m3u8') || target.includes('.m3u8')) {
+
+    if (isM3u8) {
       const text = await response.text();
-      const targetUrlObj = new URL(response.url);
+      const proxyBase = `${url.origin}${url.pathname}?url=`;
       
-      // Helper function to wrap urls back into your proxy
-      const proxyfy = (urlStr) => {
-        let absoluteUrl = urlStr;
-        // Make relative paths absolute to the koryo.tv domain
-        if (!urlStr.startsWith('http')) {
-          absoluteUrl = new URL(urlStr, targetUrlObj.href).href;
-        }
-        // Wrap it in your proxy URL
-        const newUrl = new URL(proxyBaseUrl.pathname, proxyBaseUrl.origin);
-        newUrl.searchParams.set('url', absoluteUrl);
-        return newUrl.href;
+      const wrapUrl = (uri) => {
+        const absoluteUrl = new URL(uri, response.url).href;
+        return `${proxyBase}${encodeURIComponent(absoluteUrl)}`;
       };
 
-      // Rewrite absolute paths and relative URLs to flow through the proxy
+      // 4. Bulletproof regex using .trim() to combat \r\n line-ending bugs
       let rewritten = text
-        .replace(/URI="([^"]+)"/g, (match, uri) => {
-          return `URI="${proxyfy(uri)}"`; // Proxifies encryption keys/sub-playlists
-        })
-        .replace(/^(?!#)(\S+)$/gm, (match) => {
-          return proxyfy(match); // Proxifies TS segments
+        .replace(/URI="([^"]+)"/g, (match, uri) => `URI="${wrapUrl(uri.trim())}"`)
+        .replace(/^(?!#)(.+)$/gm, (match, p1) => {
+            const trimmed = p1.trim();
+            if (!trimmed) return match;
+            return wrapUrl(trimmed);
         });      
       
       body = rewritten;     
       
-      // Calculate new content length. Do NOT copy content-encoding!
-      responseHeaders.set('content-length', String(new TextEncoder().encode(body).length));
-      
-    } else {
-      // If it's a direct media segment (.ts), pass length and encoding safely
-      ['content-length', 'content-encoding'].forEach(h => {
-        const val = response.headers.get(h);
-        if (val) responseHeaders.set(h, val);
-      });
+      // Re-calculate content length since we modified the text body
+      responseHeaders.set('content-length', String(new TextEncoder().encode(body).length));     
     }
-
+    
     return new Response(body, {
       status: response.status,
       statusText: response.statusText,
       headers: responseHeaders,
     });
-    
+
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
