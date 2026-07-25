@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Koryo.TV - KCTV Stream & EPG</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.plyr.io/3.7.8/plyr.css">
+    <script src="https://cdn.plyr.io/3.7.8/plyr.polyfilled.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8"></script>
     <style>
         :root {
@@ -25,6 +27,17 @@
             --error: #ef4444;
             --live: #ef4444;
             --live-glow: rgba(239, 68, 68, 0.4);
+            --plyr-color-main: #c41e3a;
+            --plyr-video-background: #000;
+            --plyr-menu-background: #1a1a25;
+            --plyr-menu-color: #e8e8f0;
+            --plyr-tooltip-background: #1a1a25;
+            --plyr-tooltip-color: #e8e8f0;
+            --plyr-control-icon-size: 18px;
+            --plyr-control-spacing: 12px;
+            --plyr-control-padding: 10px;
+            --plyr-control-radius: 8px;
+            --plyr-font-family: 'Inter', sans-serif;
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -163,7 +176,71 @@
             background: #000;
         }
 
-        video { width: 100%; height: 100%; object-fit: contain; }
+        .plyr { 
+            width: 100%; 
+            height: 100%; 
+            --plyr-control-icon-size: 18px;
+            --plyr-video-controls-background: linear-gradient(transparent, rgba(0,0,0,0.7));
+        }
+
+        .plyr--video .plyr__controls {
+            padding: 20px 15px 15px;
+        }
+
+        .plyr__control {
+            background: rgba(255,255,255,0.1) !important;
+            border-radius: 8px !important;
+            transition: all 0.2s !important;
+        }
+
+        .plyr__control:hover {
+            background: var(--accent) !important;
+        }
+
+        .plyr__control--overlaid {
+            background: var(--accent) !important;
+            padding: 20px !important;
+            border-radius: 50% !important;
+            box-shadow: 0 0 30px var(--accent-glow) !important;
+        }
+
+        .plyr__control--overlaid:hover {
+            background: var(--accent-light) !important;
+            transform: scale(1.1);
+        }
+
+        .plyr__progress__buffer {
+            background: rgba(255,255,255,0.15);
+        }
+
+        .plyr__progress__played {
+            background: var(--accent);
+        }
+
+        .plyr__volume--display {
+            background: var(--accent);
+        }
+
+        .plyr__menu__container {
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border) !important;
+            border-radius: 12px !important;
+        }
+
+        .plyr__menu__container .plyr__control {
+            background: transparent !important;
+        }
+
+        .plyr__menu__container .plyr__control:hover {
+            background: var(--bg-hover) !important;
+        }
+
+        .plyr__tooltip {
+            background: var(--bg-card) !important;
+            border: 1px solid var(--border) !important;
+            color: var(--text) !important;
+            border-radius: 8px !important;
+        }
 
         .player-overlay {
             position: absolute;
@@ -175,6 +252,7 @@
             opacity: 0;
             transition: opacity 0.3s;
             pointer-events: none;
+            z-index: 10;
         }
 
         .player-overlay.show { opacity: 1; pointer-events: all; }
@@ -197,7 +275,7 @@
 
         .play-btn:hover { transform: scale(1.1); box-shadow: 0 0 40px var(--accent-glow); }
 
-        .player-controls {
+        .player-controls-custom {
             padding: 1rem 1.25rem;
             display: flex;
             align-items: center;
@@ -558,16 +636,12 @@
                         </div>
                     </div>
                     <div class="video-container">
-                        <video id="video" autoplay muted playsinline></video>
-                        <div class="player-overlay" id="playOverlay">
-                            <button class="play-btn" onclick="startStream()">▶</button>
-                        </div>
+                        <video id="video" controls crossorigin playsinline poster="/player_cover.png"></video>
                     </div>
-                    <div class="player-controls">
-                        <button class="control-btn" onclick="toggleMute()" id="muteBtn">🔇 Unmute</button>
-                        <button class="control-btn" onclick="toggleFullscreen()">⛶ Fullscreen</button>
-                        <button class="control-btn primary" onclick="refreshStream()">🔄 Refresh</button>
-                        <span class="status-text" id="streamStatus">Click play to start</span>
+                    <div class="player-controls-custom">
+                        <button class="control-btn primary" onclick="startStream()">▶ Play Stream</button>
+                        <button class="control-btn" onclick="refreshStream()">🔄 Refresh</button>
+                        <span class="status-text" id="streamStatus">Click Play to start</span>
                     </div>
                 </div>
 
@@ -707,100 +781,75 @@
                     Since Koryo.TV's APIs don't send CORS headers, you need a proxy. Here's how to deploy one on Vercel:
                 </p>
 
-                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 1: Create Project Structure</h5>
-                <pre style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; color: var(--text-muted);">
-my-koryo-proxy/
-├── api/
-│   └── proxy.js
-├── public/
-│   └── index.html   (this file)
-├── vercel.json
-└── package.json</pre>
+                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 1: Create <code>api/proxy.js</code></h5>
+                <pre style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.75rem; color: var(--text-muted);">
+export const config = { runtime: 'edge' };
 
-                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 2: <code>api/proxy.js</code> — The Proxy Handler</h5>
-                <pre style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; color: var(--text-muted);">
-export default async function handler(req, res) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Koryo-Epg');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+export default async function handler(request) {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, HEAD',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Koryo-Epg, Authorization, Accept, Referer, Origin, Cookie',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Max-Age': '86400',
+  };
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  const target = req.query.url;
+  const url = new URL(request.url);
+  const target = url.searchParams.get('url');
+
   if (!target) {
-    return res.status(400).json({ error: 'Missing url parameter' });
+    return new Response(JSON.stringify({ error: 'Missing url parameter' }), {
+      status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {
-    const fetchOptions = {
-      method: req.method,
-      headers: {},
-    };
-
-    // Forward specific headers
-    ['x-koryo-epg', 'accept', 'referer', 'origin'].forEach(h => {
-      if (req.headers[h]) fetchOptions.headers[h] = req.headers[h];
+    const fetchHeaders = {};
+    ['x-koryo-epg', 'accept', 'referer', 'origin', 'cookie', 'user-agent'].forEach(h => {
+      const val = request.headers.get(h);
+      if (val) fetchHeaders[h] = val;
     });
 
-    // Include cookies for session-based requests
-    if (req.headers.cookie) {
-      fetchOptions.headers['cookie'] = req.headers.cookie;
-    }
+    const response = await fetch(target, {
+      method: request.method,
+      headers: fetchHeaders,
+    });
 
-    const response = await fetch(target, fetchOptions);
-
-    // Forward response headers
-    ['content-type', 'content-encoding', 'set-cookie'].forEach(h => {
+    const responseHeaders = { ...corsHeaders };
+    ['content-type', 'content-encoding', 'content-length', 'cache-control', 'etag'].forEach(h => {
       const val = response.headers.get(h);
-      if (val) res.setHeader(h, val);
+      if (val) responseHeaders[h] = val;
     });
 
-    const body = await response.arrayBuffer();
-    res.status(response.status).send(Buffer.from(body));
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) responseHeaders['set-cookie'] = setCookie;
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 }</pre>
 
-                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 3: <code>vercel.json</code></h5>
+                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 2: Deploy</h5>
                 <pre style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; color: var(--text-muted);">
-{
-  "version": 2,
-  "routes": [
-    { "src": "/api/proxy", "dest": "/api/proxy.js" },
-    { "src": "/(.*)", "dest": "/public/$1" }
-  ]
-}</pre>
+# Push to GitHub, then:
+vercel --prod
 
-                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 4: <code>package.json</code></h5>
+# Or connect GitHub repo to Vercel dashboard</pre>
+
+                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 3: Update PROXY_BASE in this HTML</h5>
                 <pre style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; color: var(--text-muted);">
-{
-  "name": "koryo-proxy",
-  "version": "1.0.0"
-}</pre>
-
-                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 5: Deploy</h5>
-                <pre style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; color: var(--text-muted);">
-# Install Vercel CLI
-npm i -g vercel
-
-# Login
-vercel login
-
-# Deploy
-vercel --prod</pre>
-
-                <h5 style="margin: 1rem 0 0.5rem; color: var(--text);">Step 6: Update This Player</h5>
-                <p style="color: var(--text-muted); line-height: 1.8;">
-                    After deploying, change the <code style="background: var(--bg-hover); padding: 0.2rem 0.5rem; border-radius: 4px;">PROXY_BASE</code> 
-                    variable in the JavaScript below to your Vercel URL:
-                </p>
-                <pre style="background: var(--bg-hover); padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: 0.8rem; color: var(--text-muted);">
-const PROXY_BASE = 'https://juchetv-epg-service.vercel.app//api/proxy?url=';</pre>
+const PROXY_BASE = 'https://your-app.vercel.app/api/proxy?url=';</pre>
 
                 <h4 style="margin: 1.5rem 0 0.5rem;">🔒 Security Note</h4>
                 <p style="color: var(--text-muted); line-height: 1.8;">
@@ -830,13 +879,14 @@ const PROXY_BASE = 'https://juchetv-epg-service.vercel.app//api/proxy?url=';</pr
         const EPG_URL = 'https://koryo.tv/api/epg/b2ad0bb59619601b6dd7069a.dat';
         let currentServer = SERVERS[0];
         let hls = null;
-        let sessionCookie = null;
+        let plyr = null;
         let epgData = null;
         let nowPlayingInterval = null;
 
         // Helper to build URLs (with or without proxy)
         function buildUrl(target) {
-            return PROXY_BASE ? PROXY_BASE + encodeURIComponent(target) : target;
+            if (!PROXY_BASE) return target;
+            return PROXY_BASE + encodeURIComponent(target);
         }
 
         // ==================== UTILS ====================
@@ -906,7 +956,7 @@ const PROXY_BASE = 'https://juchetv-epg-service.vercel.app//api/proxy?url=';</pr
             if (el) selectServer(el);
         }
 
-        // ==================== STREAMING ====================
+        // ==================== STREAMING WITH PLYR + HLS.js ====================
         async function createSession() {
             try {
                 const resp = await fetch(buildUrl(`${currentServer.url}/session/anon?quality=1080p`), {
@@ -916,10 +966,7 @@ const PROXY_BASE = 'https://juchetv-epg-service.vercel.app//api/proxy?url=';</pr
                     cache: 'no-store'
                 });
                 const data = await resp.json();
-                if (data.success) {
-                    sessionCookie = true;
-                    return true;
-                }
+                if (data.success) return true;
                 throw new Error(data.error || 'Session failed');
             } catch (e) {
                 showToast(`Session error: ${e.message}`, 'error');
@@ -935,16 +982,12 @@ const PROXY_BASE = 'https://juchetv-epg-service.vercel.app//api/proxy?url=';</pr
             }
 
             const video = document.getElementById('video');
-            const overlay = document.getElementById('playOverlay');
             const status = document.getElementById('streamStatus');
-
-            overlay.classList.remove('show');
             status.textContent = 'Creating session...';
 
             const sessionOk = await createSession();
             if (!sessionOk) {
-                overlay.classList.add('show');
-                status.textContent = 'Session failed - click to retry';
+                status.textContent = 'Session failed - click Play to retry';
                 return;
             }
 
@@ -953,26 +996,43 @@ const PROXY_BASE = 'https://juchetv-epg-service.vercel.app//api/proxy?url=';</pr
 
             status.textContent = 'Loading stream...';
 
+            // Destroy existing instances
             if (hls) { hls.destroy(); hls = null; }
+            if (plyr) { plyr.destroy(); plyr = null; }
+
+            // Create custom loader that routes ALL requests through proxy
+            class ProxyLoader extends Hls.DefaultConfig.loader {
+                load(context, config, callbacks) {
+                    // Route every request through the proxy
+                    if (context.url && !context.url.includes('/api/proxy?url=') && PROXY_BASE) {
+                        context.url = buildUrl(context.url);
+                    }
+                    super.load(context, config, callbacks);
+                }
+            }
 
             if (Hls.isSupported()) {
                 hls = new Hls({
+                    loader: ProxyLoader,
                     maxBufferLength: 90,
                     liveSyncDuration: 45,
                     liveMaxLatencyDuration: Infinity,
                     maxLiveSyncPlaybackRate: 1,
                     highBufferWatchdogPeriod: 3,
-                    xhrSetup: function(xhr, url) {
+                    xhrSetup: function(xhr) {
                         xhr.withCredentials = true;
                     }
                 });
 
-                hls.on(Hls.Events.MEDIA_ATTACHED, () => { status.textContent = 'Buffering...'; });
+                hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+                    status.textContent = 'Buffering...';
+                });
+
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
                     status.textContent = 'Playing live';
-                    video.play().catch(() => {});
                     showToast('Stream started successfully');
                 });
+
                 hls.on(Hls.Events.ERROR, (event, data) => {
                     if (data.fatal) {
                         status.textContent = `Error: ${data.type}`;
@@ -983,9 +1043,36 @@ const PROXY_BASE = 'https://juchetv-epg-service.vercel.app//api/proxy?url=';</pr
 
                 hls.loadSource(m3u8Url);
                 hls.attachMedia(video);
+
+                // Initialize Plyr after HLS is attached
+                plyr = new Plyr(video, {
+                    controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
+                    settings: ['quality', 'speed', 'loop'],
+                    quality: { default: 1080, options: [1080, 720, 480] },
+                    tooltips: { controls: true, seek: true },
+                    keyboard: { focused: true, global: true },
+                    hideControls: false,
+                    resetOnEnd: false,
+                    clickToPlay: true,
+                    ads: { enabled: false }
+                });
+
             } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                // Native HLS support (Safari)
                 video.src = m3u8Url;
-                video.addEventListener('loadedmetadata', () => { video.play(); status.textContent = 'Playing live'; });
+                plyr = new Plyr(video, {
+                    controls: ['play-large', 'play', 'progress', 'current-time', 'mute', 'volume', 'captions', 'settings', 'pip', 'airplay', 'fullscreen'],
+                    settings: ['quality', 'speed', 'loop'],
+                    tooltips: { controls: true, seek: true },
+                    keyboard: { focused: true, global: true },
+                    hideControls: false,
+                    resetOnEnd: false,
+                    clickToPlay: true,
+                });
+                video.addEventListener('loadedmetadata', () => {
+                    video.play();
+                    status.textContent = 'Playing live';
+                });
             } else {
                 showToast('HLS not supported in this browser', 'error');
                 status.textContent = 'Browser not supported';
@@ -993,24 +1080,12 @@ const PROXY_BASE = 'https://juchetv-epg-service.vercel.app//api/proxy?url=';</pr
         }
 
         function refreshStream() {
-            if (hls) { hls.destroy(); hls = null; }
-            document.getElementById('video').src = '';
-            document.getElementById('playOverlay').classList.add('show');
-            document.getElementById('streamStatus').textContent = 'Click play to start';
-            startStream();
-        }
-
-        function toggleMute() {
             const video = document.getElementById('video');
-            const btn = document.getElementById('muteBtn');
-            video.muted = !video.muted;
-            btn.textContent = video.muted ? '🔇 Unmute' : '🔊 Mute';
-        }
-
-        function toggleFullscreen() {
-            const container = document.querySelector('.video-container');
-            if (document.fullscreenElement) document.exitFullscreen();
-            else container.requestFullscreen();
+            if (hls) { hls.destroy(); hls = null; }
+            if (plyr) { plyr.destroy(); plyr = null; }
+            video.src = '';
+            document.getElementById('streamStatus').textContent = 'Click Play to start';
+            startStream();
         }
 
         // ==================== EPG ====================
@@ -1150,7 +1225,6 @@ const PROXY_BASE = 'https://juchetv-epg-service.vercel.app//api/proxy?url=';</pr
 
         // ==================== INIT ====================
         document.addEventListener('DOMContentLoaded', () => {
-            // Hide CORS banner if proxy is configured
             if (PROXY_BASE) {
                 document.getElementById('corsBanner').style.display = 'none';
             }
