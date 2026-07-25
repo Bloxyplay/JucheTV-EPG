@@ -1,4 +1,3 @@
-// api/proxy.js - Vercel Edge Function (no vercel.json needed)
 export const config = {
   runtime: 'edge',
 };
@@ -20,7 +19,7 @@ export default async function handler(request) {
   const target = url.searchParams.get('url');
 
   if (!target) {
-    return new Response(JSON.stringify({ error: 'Missing url parameter. Usage: /api/proxy?url=<target>' }), {
+    return new Response(JSON.stringify({ error: 'Missing url parameter' }), {
       status: 400,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
@@ -28,9 +27,7 @@ export default async function handler(request) {
 
   try {
     const fetchHeaders = {};
-    const forwardHeaders = ['x-koryo-epg', 'accept', 'referer', 'origin', 'cookie', 'user-agent', 'authorization'];
-    
-    forwardHeaders.forEach(h => {
+    ['x-koryo-epg', 'accept', 'referer', 'origin', 'cookie', 'user-agent'].forEach(h => {
       const val = request.headers.get(h);
       if (val) fetchHeaders[h] = val;
     });
@@ -54,7 +51,6 @@ export default async function handler(request) {
       statusText: response.statusText,
       headers: responseHeaders,
     });
-
   } catch (error) {
     return new Response(JSON.stringify({ error: error.message }), {
       status: 500,
