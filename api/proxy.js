@@ -1,46 +1,64 @@
-export default async function handler(req, res) {
-  // Set CORS headers
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Koryo-Epg');
-  res.setHeader('Access-Control-Allow-Credentials', 'true');
+// api/proxy.js - Vercel Edge Function (no vercel.json needed)
+export const config = {
+  runtime: 'edge',
+};
 
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+export default async function handler(request) {
+  const corsHeaders = {
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Methods': 'GET, POST, OPTIONS, HEAD',
+    'Access-Control-Allow-Headers': 'Content-Type, X-Koryo-Epg, Authorization, Accept, Referer, Origin, Cookie',
+    'Access-Control-Allow-Credentials': 'true',
+    'Access-Control-Max-Age': '86400',
+  };
+
+  if (request.method === 'OPTIONS') {
+    return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  const target = req.query.url;
+  const url = new URL(request.url);
+  const target = url.searchParams.get('url');
+
   if (!target) {
-    return res.status(400).json({ error: 'Missing url parameter' });
+    return new Response(JSON.stringify({ error: 'Missing url parameter. Usage: /api/proxy?url=<target>' }), {
+      status: 400,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 
   try {
-    const fetchOptions = {
-      method: req.method,
-      headers: {},
-    };
-
-    // Forward specific headers
-    ['x-koryo-epg', 'accept', 'referer', 'origin'].forEach(h => {
-      if (req.headers[h]) fetchOptions.headers[h] = req.headers[h];
+    const fetchHeaders = {};
+    const forwardHeaders = ['x-koryo-epg', 'accept', 'referer', 'origin', 'cookie', 'user-agent', 'authorization'];
+    
+    forwardHeaders.forEach(h => {
+      const val = request.headers.get(h);
+      if (val) fetchHeaders[h] = val;
     });
 
-    // Include cookies for session-based requests
-    if (req.headers.cookie) {
-      fetchOptions.headers['cookie'] = req.headers.cookie;
-    }
+    const response = await fetch(target, {
+      method: request.method,
+      headers: fetchHeaders,
+    });
 
-    const response = await fetch(target, fetchOptions);
-
-    // Forward response headers
-    ['content-type', 'content-encoding', 'set-cookie'].forEach(h => {
+    const responseHeaders = { ...corsHeaders };
+    ['content-type', 'content-encoding', 'content-length', 'cache-control', 'etag'].forEach(h => {
       const val = response.headers.get(h);
-      if (val) res.setHeader(h, val);
+      if (val) responseHeaders[h] = val;
     });
 
-    const body = await response.arrayBuffer();
-    res.status(response.status).send(Buffer.from(body));
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    const setCookie = response.headers.get('set-cookie');
+    if (setCookie) responseHeaders['set-cookie'] = setCookie;
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: responseHeaders,
+    });
+
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
   }
 }
